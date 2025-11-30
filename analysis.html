@@ -1,0 +1,439 @@
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Namma Mart - Analysis</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="employee.css">
+    <style>
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .data-table th, .data-table td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: left;
+        }
+        .data-table th {
+            background-color: #f2f2f2;
+        }
+        .edit-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border: 1px solid #ccc;
+            z-index: 1000;
+            width: 400px;
+            max-width: 90%;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+        .edit-form div {
+            margin-bottom: 10px;
+        }
+        .edit-form label {
+            display: inline-block;
+            width: 120px;
+            margin-right: 10px;
+        }
+        .edit-form input {
+            width: calc(100% - 130px);
+            padding: 5px;
+        }
+        .edit-form button {
+            margin-right: 10px;
+            padding: 5px 10px;
+        }
+        .edit-form textarea {
+            width: calc(100% - 130px);
+            padding: 5px;
+            resize: vertical;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <h1>NAMMA MART</h1>
+            <p>Signature Of Quality</p>
+        </div>
+        <div class="manager-info">
+            <h2>EXTENSIVE MANAGER</h2>
+            <p>Designed By Yochan</p>
+        </div>
+    </header>
+    <div class="back-button">
+        <button onclick="window.location.href='employee.html'">Back</button>
+    </div>
+    <main>
+        <div class="employee-container">
+            <div class="employee-buttons">
+                <button class="employee-btn" onclick="viewExtra()">View extra</button>
+                <button class="employee-btn" onclick="viewDelivery()">View delivery</button>
+                <button class="employee-btn" onclick="viewBillPaid()">View Bill paid</button>
+                <button class="employee-btn" onclick="viewIssue()">View Issue</button>
+                <button class="employee-btn" onclick="viewRetailCredit()">View Retail credit</button>
+            </div>
+        </div>
+        <div id="data-table" style="display:none; position:fixed; right:0; top:0; width:50%; height:100%; background-color:white; border-left:2px solid #ccc; overflow:auto; padding:20px;">
+            <button onclick="closeTable()">Close</button>
+            <h3 id="table-title">Data</h3>
+            <table id="data-table-content" class="data-table">
+                <thead id="table-head"></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <div id="edit-modal" class="edit-modal" style="display:none;">
+            <h3>Edit Item</h3>
+            <form id="edit-form" class="edit-form">
+                <input type="hidden" id="edit-id">
+                <input type="hidden" id="edit-type">
+                <div id="edit-fields"></div>
+                <button type="submit">Save</button>
+                <button type="button" onclick="closeEditModal()">Cancel</button>
+            </form>
+        </div>
+        <div id="modal-overlay" class="modal-overlay" style="display:none;" onclick="closeAllModals()"></div>
+        <div id="delete-reason-modal" class="edit-modal" style="display:none;">
+            <h3>Reason for Deletion</h3>
+            <form id="delete-reason-form">
+                <input type="hidden" id="delete-id">
+                <input type="hidden" id="delete-type">
+                <div>
+                    <label for="delete-reason">Reason: </label>
+                    <textarea id="delete-reason" name="reason" rows="4" style="width:100%;" placeholder="Please provide a reason for deleting this item." required></textarea>
+                </div>
+                <div style="margin-top:10px;">
+                    <button type="submit">Confirm Delete</button>
+                    <button type="button" onclick="closeDeleteModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </main>
+    <footer>
+        <p>ANALYSIS PAGE</p>
+    </footer>
+    <script>
+        function getTodayDate() {
+            const today = new Date();
+            return today.toISOString().split('T')[0];
+        }
+
+        async function fetchEmployee(employeeId) {
+            const response = await fetch(`/api/employees/${employeeId}`);
+            if (response.ok) {
+                return response.json();
+            }
+            return null;
+        }
+
+        async function fetchData(endpoint, title, headers, fields, shiftStartTime, shiftEndTime) {
+            const employeeId = localStorage.getItem('employeeId');
+            if (!employeeId) {
+                alert('Employee ID not found. Please login again.');
+                return;
+            }
+            const today = getTodayDate();
+            let url = `/api/${endpoint}?employeeId=${employeeId}&date=${today}`;
+            if (shiftStartTime && shiftEndTime) {
+                url += `&shiftStartTime=${encodeURIComponent(shiftStartTime)}&shiftEndTime=${encodeURIComponent(shiftEndTime)}`;
+            }
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                document.getElementById('table-title').textContent = title;
+                const thead = document.getElementById('table-head');
+                thead.innerHTML = '<tr>' + headers.map(h => `<th style="border:1px solid #000; padding:8px;">${h}</th>`).join('') + '<th style="border:1px solid #000; padding:8px;">Actions</th></tr>';
+                const tbody = document.querySelector('#data-table-content tbody');
+                tbody.innerHTML = '';
+                data.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = fields.map(field => {
+                        let value = item[field];
+                        if (field === 'timestamp' && value) {
+                            const date = new Date(value);
+                            value = date.toLocaleString('en-US', { hour12: true });
+                        }
+                        return `<td style="border:1px solid #000; padding:8px;">${value}</td>`;
+                    }).join('') + `<td style="border:1px solid #000; padding:8px;"><button data-type="${endpoint}" data-id="${item.id}" data-item='${JSON.stringify(item).replace(/'/g, "\\'")}' onclick="editItem(this)">Edit</button> <button onclick="deleteItem('${endpoint}', '${item.id}')">Delete</button></td>`;
+                    tbody.appendChild(row);
+                });
+                document.getElementById('data-table').style.display = 'block';
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                alert('Error fetching data.');
+            }
+        }
+
+        function viewExtra() {
+            fetchData('extra', 'Extra Data', ['Timestamp', 'Item Name', 'Bill Number', 'Extra Amount', 'Mode of Pay'], ['timestamp', 'itemName', 'billNumber', 'extraAmount', 'modeOfPay']);
+        }
+
+        function viewDelivery() {
+            fetchData('delivery', 'Delivery Data', ['Timestamp', 'Bill Number', 'Amount', 'Mode of Pay'], ['timestamp', 'billNumber', 'amount', 'modeOfPay']);
+        }
+
+        function viewBillPaid() {
+            fetchData('bill_paid', 'Bill Paid Data', ['Timestamp', 'Vendor/Supplier', 'Amount Paid'], ['timestamp', 'vendorSupplier', 'amountPaid']);
+        }
+
+        function viewIssue() {
+            fetchData('issue', 'Issue Data', ['Timestamp', 'Bill Number', 'Issue Details'], ['timestamp', 'billNumber', 'issueDescription']);
+        }
+
+        function viewRetailCredit() {
+            fetchData('retail_credit', 'Retail Credit Data', ['Timestamp', 'Phone Number', 'Amount', 'Mode of Pay'], ['timestamp', 'phoneNumber', 'amount', 'modeOfPay']);
+        }
+
+        function viewHistory() {
+            const employeeId = localStorage.getItem('employeeId');
+            if (!employeeId) {
+                alert('Employee ID not found. Please login again.');
+                return;
+            }
+            fetch(`/api/history?employeeId=${employeeId}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('table-title').textContent = 'History Data';
+                    const thead = document.getElementById('table-head');
+                    thead.innerHTML = '<tr><th style="border:1px solid #000; padding:8px;">Timestamp</th><th style="border:1px solid #000; padding:8px;">Action</th><th style="border:1px solid #000; padding:8px;">Type</th><th style="border:1px solid #000; padding:8px;">Item ID</th><th style="border:1px solid #000; padding:8px;">Reason</th><th style="border:1px solid #000; padding:8px;">Original Data</th><th style="border:1px solid #000; padding:8px;">Modified Data</th><th style="border:1px solid #000; padding:8px;">Actions</th></tr>';
+                    const tbody = document.querySelector('#data-table-content tbody');
+                    tbody.innerHTML = '';
+                    data.forEach(item => {
+                        const row = document.createElement('tr');
+                        const timestamp = item.timestamp ? new Date(item.timestamp).toLocaleString('en-US', { hour12: true }) : '';
+                        const originalData = item.originalData ? JSON.stringify(item.originalData, null, 2) : '';
+                        const modifiedData = item.modifiedData ? JSON.stringify(item.modifiedData, null, 2) : '';
+                        row.innerHTML = `
+                            <td style="border:1px solid #000; padding:8px;">${timestamp}</td>
+                            <td style="border:1px solid #000; padding:8px;">${item.action}</td>
+                            <td style="border:1px solid #000; padding:8px;">${item.type}</td>
+                            <td style="border:1px solid #000; padding:8px;">${item.itemId}</td>
+                            <td style="border:1px solid #000; padding:8px;">${item.reason || ''}</td>
+                            <td style="border:1px solid #000; padding:8px;"><pre>${originalData}</pre></td>
+                            <td style="border:1px solid #000; padding:8px;"><pre>${modifiedData}</pre></td>
+                            <td style="border:1px solid #000; padding:8px;">
+                                ${item.action === 'delete' ? `<button onclick="restoreItem('${item.id}')">Restore</button>` : ''}
+                                ${item.action === 'edit' ? `<button onclick="revertEdit('${item.id}')">Revert</button>` : ''}
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                    document.getElementById('data-table').style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error fetching history:', error);
+                    alert('Error fetching history.');
+                });
+        }
+
+        function closeTable() {
+            document.getElementById('data-table').style.display = 'none';
+        }
+
+        function editItem(button) {
+            const type = button.getAttribute('data-type');
+            const id = button.getAttribute('data-id');
+            const itemData = button.getAttribute('data-item');
+            const item = JSON.parse(itemData);
+            document.getElementById('edit-id').value = id;
+            document.getElementById('edit-type').value = type;
+            const fieldsDiv = document.getElementById('edit-fields');
+            fieldsDiv.innerHTML = '';
+            const fields = getFieldsForType(type);
+            fields.forEach(field => {
+                if (field !== 'timestamp' && field !== 'id') {
+                    const label = document.createElement('label');
+                    label.textContent = field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()) + ': ';
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.name = field;
+                    input.value = item[field] || '';
+                    input.required = true;
+                    fieldsDiv.appendChild(label);
+                    fieldsDiv.appendChild(input);
+                    fieldsDiv.appendChild(document.createElement('br'));
+                }
+            });
+            // Add reason field
+            const reasonLabel = document.createElement('label');
+            reasonLabel.textContent = 'Reason for Edit: ';
+            const reasonTextarea = document.createElement('textarea');
+            reasonTextarea.name = 'editReason';
+            reasonTextarea.rows = 3;
+            reasonTextarea.required = true;
+            reasonTextarea.placeholder = 'Please provide a reason for editing this item.';
+            fieldsDiv.appendChild(reasonLabel);
+            fieldsDiv.appendChild(reasonTextarea);
+            fieldsDiv.appendChild(document.createElement('br'));
+            document.getElementById('edit-modal').style.display = 'block';
+            document.getElementById('modal-overlay').style.display = 'block';
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').style.display = 'none';
+            document.getElementById('modal-overlay').style.display = 'none';
+        }
+
+        function closeAllModals() {
+            closeEditModal();
+            closeDeleteModal();
+        }
+
+        function deleteItem(type, id) {
+            // Open delete reason modal similar to edit flow
+            document.getElementById('delete-type').value = type;
+            document.getElementById('delete-id').value = id;
+            document.getElementById('delete-reason').value = '';
+            document.getElementById('delete-reason-modal').style.display = 'block';
+            document.getElementById('modal-overlay').style.display = 'block';
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('delete-reason-modal').style.display = 'none';
+            document.getElementById('modal-overlay').style.display = 'none';
+        }
+
+        document.getElementById('delete-reason-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const type = document.getElementById('delete-type').value;
+            const id = document.getElementById('delete-id').value;
+            const reason = document.getElementById('delete-reason').value.trim();
+            const employeeId = localStorage.getItem('employeeId');
+            if (!reason) {
+                alert('Please enter a reason for deletion.');
+                return;
+            }
+
+            // Send reason as query parameter to match server expectation
+            const url = `/api/${type}/${id}?employeeId=${employeeId}&reason=${encodeURIComponent(reason)}`;
+            fetch(url, {
+                method: 'DELETE'
+            })
+            .then(response => response.json().then(body => ({ ok: response.ok, status: response.status, body })))
+            .then(result => {
+                if (result.ok) {
+                    alert('Item deleted successfully.');
+                    closeDeleteModal();
+                    // Refresh the current view
+                    const title = document.getElementById('table-title').textContent;
+                    if (title.includes('Extra')) viewExtra();
+                    else if (title.includes('Delivery')) viewDelivery();
+                    else if (title.includes('Bill Paid')) viewBillPaid();
+                    else if (title.includes('Issue')) viewIssue();
+                    else if (title.includes('Retail Credit')) viewRetailCredit();
+                    else if (title.includes('History')) viewHistory();
+                } else {
+                    console.error('Delete error response:', result.body);
+                    alert('Error deleting item: ' + (result.body.message || JSON.stringify(result.body)));
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting item:', error);
+                alert('Error deleting item: ' + error.message);
+            });
+        });
+
+        function restoreItem(historyId) {
+            if (confirm('Are you sure you want to restore this item?')) {
+                fetch(`/api/restore/${historyId}`, {
+                    method: 'POST'
+                })
+                .then(response => {
+                    if (response.ok) {
+                        alert('Item restored successfully.');
+                        viewHistory(); // Refresh history view
+                    } else {
+                        alert('Error restoring item.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error restoring item:', error);
+                    alert('Error restoring item.');
+                });
+            }
+        }
+
+        function revertEdit(historyId) {
+            if (confirm('Are you sure you want to revert this edit?')) {
+                fetch(`/api/revert-edit/${historyId}`, {
+                    method: 'POST'
+                })
+                .then(response => {
+                    if (response.ok) {
+                        alert('Edit reverted successfully.');
+                        viewHistory(); // Refresh history view
+                    } else {
+                        alert('Error reverting edit.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error reverting edit:', error);
+                    alert('Error reverting edit.');
+                });
+            }
+        }
+
+        function getFieldsForType(type) {
+            switch (type) {
+                case 'extra': return ['timestamp', 'itemName', 'billNumber', 'extraAmount', 'modeOfPay'];
+                case 'delivery': return ['timestamp', 'billNumber', 'amount', 'modeOfPay'];
+                case 'bill_paid': return ['timestamp', 'vendorSupplier', 'amountPaid'];
+                case 'issue': return ['timestamp', 'billNumber', 'issueDescription'];
+                case 'retail_credit': return ['timestamp', 'phoneNumber', 'amount', 'modeOfPay'];
+                default: return [];
+            }
+        }
+
+        document.getElementById('edit-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit-id').value;
+            const type = document.getElementById('edit-type').value;
+            const employeeId = localStorage.getItem('employeeId');
+            const formData = new FormData(e.target);
+            const data = { employeeId: employeeId };
+            for (let [key, value] of formData.entries()) {
+                data[key] = value;
+            }
+            fetch(`/api/${type}/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert('Item updated successfully.');
+                    closeEditModal();
+                    // Refresh the current view
+                    const title = document.getElementById('table-title').textContent;
+                    if (title.includes('Extra')) viewExtra();
+                    else if (title.includes('Delivery')) viewDelivery();
+                    else if (title.includes('Bill Paid')) viewBillPaid();
+                    else if (title.includes('Issue')) viewIssue();
+                    else if (title.includes('Retail Credit')) viewRetailCredit();
+                } else {
+                    alert('Error updating item.');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating item:', error);
+                alert('Error updating item.');
+            });
+        });
+    </script>
+</body>
+</html>

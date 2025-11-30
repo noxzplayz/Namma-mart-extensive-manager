@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Namma Mart - Delivery</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="employee.css">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <h1>NAMMA MART</h1>
+            <p>Signature Of Quality</p>
+        </div>
+        <div class="manager-info">
+            <h2>EXTENSIVE MANAGER</h2>
+            <p>Designed By Yochan</p>
+        </div>
+    </header>
+    <div class="back-button">
+        <button onclick="window.location.href='employee.html'">Back</button>
+    </div>
+    <div class="toggle-container-top">
+        <label class="switch">
+            <input type="checkbox" id="bill-with-extra-toggle">
+            <span class="slider"></span>
+        </label>
+        <span class="toggle-label">BILL WITH EXTRA</span>
+    </div>
+    <main>
+        <div class="employee-container">
+            <form id="delivery-form">
+                <div class="input-fields">
+                    <label for="bill-number">Bill Number:</label>
+                    <input type="text" id="bill-number" name="bill-number" required><br><br>
+
+                    <div id="extra-fields" style="display: none;">
+                        <label for="amount-with-extra">Amount without Extra:</label>
+                        <input type="text" id="amount-with-extra" name="amount-with-extra"><br><br>
+                        <label for="extra-amount">Extra Amount:</label>
+                        <input type="text" id="extra-amount" name="extra-amount"><br><br>
+                        <label for="extra-item-category">Extra Item Category:</label>
+                        <input type="text" id="extra-item-category" name="extra-item-category"><br><br>
+                    </div>
+
+                    <label for="amount">Amount:</label>
+                    <input type="text" id="amount" name="amount" required><br><br>
+
+                    <label for="mode-of-pay">Mode of Pay:</label>
+                    <select id="mode-of-pay" name="mode-of-pay" required>
+                        <option value="">Select Mode of Pay</option>
+                        <option value="Upi Pinelab">Upi Pinelab</option>
+                        <option value="Card Pinelab">Card Pinelab</option>
+                        <option value="Upi Paytm">Upi Paytm</option>
+                        <option value="Card Paytm">Card Paytm</option>
+                        <option value="Cash">Cash</option>
+                    </select><br><br>
+
+                    <button type="submit" class="submit-btn">Submit</button>
+                </div>
+            </form>
+        </div>
+    </main>
+    <footer>
+        <p>DELIVERY PAGE</p>
+    </footer>
+    <script>
+        // Get employee ID from localStorage (assuming it's stored during login)
+        const employeeId = localStorage.getItem('employeeId');
+
+        document.getElementById('bill-with-extra-toggle').addEventListener('change', function() {
+            const extraFields = document.getElementById('extra-fields');
+            const amountInput = document.getElementById('amount');
+            if (this.checked) {
+                extraFields.style.display = 'block';
+                amountInput.readOnly = true;
+                calculateTotal();
+            } else {
+                extraFields.style.display = 'none';
+                amountInput.readOnly = false;
+                amountInput.value = '';
+            }
+        });
+
+        function calculateTotal() {
+            const amountWithExtra = parseFloat(document.getElementById('amount-with-extra').value) || 0;
+            const extraAmount = parseFloat(document.getElementById('extra-amount').value) || 0;
+            const total = amountWithExtra + extraAmount;
+            document.getElementById('amount').value = total;
+        }
+
+        document.getElementById('amount-with-extra').addEventListener('input', calculateTotal);
+        document.getElementById('extra-amount').addEventListener('input', calculateTotal);
+
+        document.getElementById('delivery-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            if (!employeeId) {
+                alert('Employee ID not found. Please login again.');
+                return;
+            }
+
+            const formData = new FormData(this);
+            const isBillWithExtra = document.getElementById('bill-with-extra-toggle').checked;
+
+            const rawBillNumber = formData.get('bill-number');
+            const formattedBillNumber = isBillWithExtra ? ('E' + rawBillNumber) : rawBillNumber;
+
+            const deliveryData = {
+                employeeId: employeeId,
+                billNumber: formattedBillNumber,
+                amount: formData.get('amount'),
+                extraAmount: formData.get('extra-amount') || 0,
+                totalAmount: formData.get('amount'),
+                modeOfPay: formData.get('mode-of-pay')
+            };
+
+            // Save delivery data
+            fetch('/api/delivery', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(deliveryData)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    // If bill with extra is toggled, save extra data
+                    if (isBillWithExtra) {
+                        const extraData = {
+                            employeeId: employeeId,
+                            itemName: formData.get('extra-item-category'),
+                            billNumber: formattedBillNumber,
+                            extraAmount: formData.get('extra-amount'),
+                            modeOfPay: formData.get('mode-of-pay')
+                        };
+
+                        fetch('/api/extra', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(extraData)
+                        })
+                        .then(extraResponse => extraResponse.json())
+                        .then(extraResult => {
+                            if (extraResult.success) {
+                                alert('Delivery and extra data saved successfully!');
+                            } else {
+                                alert('Delivery saved, but error saving extra: ' + extraResult.message);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error saving extra:', error);
+                            alert('Delivery saved, but error saving extra.');
+                        });
+                    } else {
+                        alert('Data saved successfully!');
+                    }
+
+                    // Reset form
+                    this.reset();
+                    document.getElementById('extra-fields').style.display = 'none';
+                    document.getElementById('amount').readOnly = false;
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while saving data.');
+            });
+        });
+    </script>
+</body>
+</html>

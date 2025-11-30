@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Namma Mart - Employee Page</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="employee.css">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <h1>NAMMA MART</h1>
+            <p>Signature Of Quality</p>
+        </div>
+        <div class="manager-info">
+            <h2>EXTENSIVE MANAGER</h2>
+            <p>Designed By Yochan</p>
+        </div>
+    </header>
+    <div class="profile-icon">👤 <span class="employee-name">Employee Name</span></div>
+    <main>
+        <div class="employee-container">
+            <div class="employee-buttons">
+                <button class="employee-btn" onclick="window.location.href='extra.html'">extra</button>
+                <button class="employee-btn" onclick="window.location.href='delivery.html'">delivery</button>
+                <button class="employee-btn" onclick="window.location.href='bill_paid.html'">bill paid</button>
+                <button class="employee-btn" onclick="window.location.href='issue.html'">issue</button>
+                <button class="employee-btn" onclick="window.location.href='retail_credit.html'">retail credit</button>
+                <button class="employee-btn" onclick="window.location.href='analysis.html'">analysis</button>
+                <button class="employee-btn logout-btn" onclick="logout()">logout</button>
+                <button class="employee-btn" onclick="endShift()">End shift</button>
+            </div>
+        </div>
+    </main>
+    <footer>
+        <p>EMPLOYEE PAGE</p>
+    </footer>
+    <script>
+        function updateEmployeeName() {
+            const employeeName = localStorage.getItem('username') || 'Employee Name';
+            document.querySelector('.employee-name').textContent = employeeName;
+        }
+        updateEmployeeName();
+        window.addEventListener('storage', updateEmployeeName);
+
+        function logout() {
+            localStorage.removeItem('username');
+            localStorage.removeItem('employeeId');
+            window.location.href = 'index.html';
+        }
+
+        async function endShift() {
+            const employeeId = localStorage.getItem('employeeId');
+            if (!employeeId) {
+                alert('Employee ID not found. Please log in again.');
+                return;
+            }
+
+            // First, send OTP to employee's email
+            try {
+                const otpResponse = await fetch('/api/send-employee-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ employeeId })
+                });
+                const otpData = await otpResponse.json();
+                if (!otpData.success) {
+                    alert('Failed to send OTP: ' + otpData.message);
+                    return;
+                }
+                let message = 'OTP sent to your email. Please check your inbox.';
+                if (otpData.debugOtp) {
+                    message += ` Debug OTP: ${otpData.debugOtp}`;
+                }
+                alert(message);
+            } catch (error) {
+                console.error('Error sending OTP:', error);
+                alert('An error occurred while sending OTP.');
+                return;
+            }
+
+            // Now, prompt for OTP
+            const otp = prompt('Enter the OTP sent to your email to end shift:');
+            if (!otp) return;
+
+            // Verify the OTP
+            try {
+                const verifyResponse = await fetch('/api/verify-employee-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ otp, employeeId })
+                });
+                const verifyData = await verifyResponse.json();
+                if (verifyData.success) {
+                    alert('Shift ended successfully!');
+                    // Redirect to new end shift report page with employeeId and current date
+                    const todayDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+                    window.location.href = `end_shift_report.html?employeeId=${encodeURIComponent(employeeId)}&date=${encodeURIComponent(todayDate)}`;
+                } else {
+                    alert('Invalid OTP: ' + verifyData.message);
+                }
+            } catch (error) {
+                console.error('Error verifying OTP:', error);
+                alert('An error occurred while verifying OTP.');
+            }
+        }
+    </script>
+</body>
+</html>

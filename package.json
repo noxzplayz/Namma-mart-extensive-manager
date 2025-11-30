@@ -1,0 +1,18 @@
+{
+  "name": "namma-mart-pannel",
+  "version": "1.0.0",
+  "description": "Backend for Namma Mart Pannel",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1",
+    "lowdb": "^1.0.0",
+    "nodemailer": "^7.0.10",
+    "selfsigned": "^2.1.1",
+    "shortid": "^2.2.16"
+  }
+}

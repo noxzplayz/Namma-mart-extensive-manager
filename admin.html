@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Namma Mart - Admin Panel</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <h1>NAMMA MART</h1>
+            <p>Signature Of Quality</p>
+        </div>
+        <div class="manager-info">
+            <h2>EXTENSIVE MANAGER</h2>
+            <p>Designed By Yochan</p>
+        </div>
+    </header>
+    <main>
+        <div class="admin-container">
+            <div class="admin-buttons">
+                <button class="admin-btn view-report-btn">VIEW Report</button>
+                <button class="admin-btn manage-employees-btn">Manage EMployees</button>
+                <button class="admin-btn logout-btn">Logout</button>
+                <button class="admin-btn auto-oc-btn">Auto O/C</button>
+            </div>
+            <div class="end-shift-container">
+                <button class="admin-btn end-shift-btn" style="background-color: red; color: white;">End Shift</button>
+                <button class="admin-btn start-shift-btn" style="display: none;">Start Shift</button>
+            </div>
+        </div>
+    </main>
+    <footer>
+        <p>Made with ❤️ By <a href="https://www.instagram.com/yochxn.__/" target="_blank">Yochan</a></p>
+    </footer>
+    <!-- Auto O/C Popup Modal -->
+    <div id="auto-oc-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Auto Open/Close Settings</h2>
+            <form id="auto-oc-form">
+                <div class="form-group">
+                    <label>Open Store Time:</label>
+                    <div class="input-row">
+                        <div class="time-inputs">
+                            <input type="number" id="open-hours" name="open-hours" min="1" max="12" placeholder="HH" required>
+                            <span>:</span>
+                            <input type="number" id="open-minutes" name="open-minutes" min="0" max="59" placeholder="MM" required>
+                            <select id="open-ampm" name="open-ampm" required>
+                                <option value="AM">AM</option>
+                                <option value="PM">PM</option>
+                            </select>
+                        </div>
+                        <div class="checkbox-container">
+                            <input type="checkbox" id="enable-open" name="enable-open" checked>
+                            <label for="enable-open">Enable Auto Open</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Close Store Time:</label>
+                    <div class="input-row">
+                        <div class="time-inputs">
+                            <input type="number" id="close-hours" name="close-hours" min="1" max="12" placeholder="HH" required>
+                            <span>:</span>
+                            <input type="number" id="close-minutes" name="close-minutes" min="0" max="59" placeholder="MM" required>
+                            <select id="close-ampm" name="close-ampm" required>
+                                <option value="AM">AM</option>
+                                <option value="PM">PM</option>
+                            </select>
+                        </div>
+                        <div class="checkbox-container">
+                            <input type="checkbox" id="enable-close" name="enable-close" checked>
+                            <label for="enable-close">Enable Auto Close</label>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="submit-btn">Save Settings</button>
+            </form>
+            <div class="modal-notes">
+                <p class="note">This setting will work daily. Please add proper data. Wrong data may lead to improper timed open and close.</p>
+                
+                <p class="note">Note: The data will be stored before performing auto close.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>

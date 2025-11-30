@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Namma Mart - Edit Employee</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="add_employee.css">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <h1>NAMMA MART</h1>
+            <p>Signature Of Quality</p>
+        </div>
+        <div class="manager-info">
+            <h2>EXTENSIVE MANAGER</h2>
+            <p>Designed By Yochan</p>
+        </div>
+    </header>
+    <main>
+        <div class="form-container">
+            <h1>Edit Employee</h1>
+            <div class="tabs">
+                <button class="tab-link active" onclick="openTab(event, 'personal-details')">Personal Details</button>
+                <button class="tab-link" onclick="openTab(event, 'bank-details')">Bank Details</button>
+                <button class="tab-link" onclick="openTab(event, 'work-details')">Work Details</button>
+                <button class="tab-link" onclick="openTab(event, 'encryption')">Encryption</button>
+            </div>
+            <div id="personal-details" class="tab-content active">
+                <form>
+                    <div class="form-group">
+                        <label for="name">Name</label>
+                        <input type="text" id="name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="employee-id">3 Digit Employee ID</label>
+                        <input type="text" id="employee-id" name="employee-id" required pattern="\d{3}">
+                    </div>
+                    <div class="form-group">
+                        <label for="address">Address</label>
+                        <textarea id="address" name="address" rows="3" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="blood-group">Blood Group</label>
+                        <input type="text" id="blood-group" name="blood-group" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">Phone Number</label>
+                        <input type="tel" id="phone" name="phone" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="guardian-name">Guardian / Parent Name</label>
+                        <input type="text" id="guardian-name" name="guardian-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="relationship">Relationship</label>
+                        <input type="text" id="relationship" name="relationship" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="guardian-phone">Guardian / Parent Phone Number</label>
+                        <input type="tel" id="guardian-phone" name="guardian-phone" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="aadhar-number">Your Aadhar Number</label>
+                        <input type="text" id="aadhar-number" name="aadhar-number" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="dob">Date of Birth</label>
+                        <input type="date" id="dob" name="dob" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="gender">Gender</label>
+                        <select id="gender" name="gender" required>
+                            <option value="">Select Gender</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="marital-status">Married or Unmarried</label>
+                        <select id="marital-status" name="marital-status" disabled>
+                            <option value="">Select Status</option>
+                            <option value="married">Married</option>
+                            <option value="unmarried">Unmarried</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                </form>
+            </div>
+            <div id="bank-details" class="tab-content">
+                <form>
+                    <div class="form-group">
+                        <label for="bank-name">Bank Name</label>
+                        <input type="text" id="bank-name" name="bank-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="bank-branch">Bank Branch</label>
+                        <input type="text" id="bank-branch" name="bank-branch" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="ifsc-code">IFSC CODE</label>
+                        <input type="text" id="ifsc-code" name="ifsc-code" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="account-number">Account Number</label>
+                        <input type="text" id="account-number" name="account-number" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="account-holder-name">Account Holder Name</label>
+                        <input type="text" id="account-holder-name" name="account-holder-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="pan-number">PAN Number</label>
+                        <input type="text" id="pan-number" name="pan-number" required>
+                    </div>
+                </form>
+            </div>
+            <div id="work-details" class="tab-content">
+                <form>
+                    <div class="form-group">
+                        <label for="full-time">Full Time</label>
+                        <select id="full-time" name="full-time" required>
+                            <option value="">Select Option</option>
+                            <option value="yes">Yes</option>
+                            <option value="no">No</option>
+                        </select>
+                    </div>
+                    <div id="full-time-details" style="display: none;">
+                        <div class="form-group">
+                            <label for="start-time">Start Time</label>
+                            <input type="time" id="start-time" name="start-time">
+                        </div>
+                        <div class="form-group">
+                            <label for="end-time">End Time</label>
+                            <input type="time" id="end-time" name="end-time">
+                        </div>
+                        <div class="form-group">
+                            <label for="break-time">Break Time (in minutes)</label>
+                            <input type="number" id="break-time" name="break-time">
+                        </div>
+                        <div class="form-group">
+                            <label>Working Days</label>
+                            <div class="checkbox-group">
+                                <label><input type="checkbox" name="working-days" value="monday"> Monday</label>
+                                <label><input type="checkbox" name="working-days" value="tuesday"> Tuesday</label>
+                                <label><input type="checkbox" name="working-days" value="wednesday"> Wednesday</label>
+                                <label><input type="checkbox" name="working-days" value="thursday"> Thursday</label>
+                                <label><input type="checkbox" name="working-days" value="friday"> Friday</label>
+                                <label><input type="checkbox" name="working-days" value="saturday"> Saturday</label>
+                                <label><input type="checkbox" name="working-days" value="sunday"> Sunday</label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div id="encryption" class="tab-content">
+                <form>
+                    <div class="form-group">
+                        <label for="username">User Name</label>
+                        <input type="text" id="username" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" required pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[\W_]).{8,}" title="Password must be at least 8 characters long and include at least one uppercase letter, one number, and one special character.">
+                    </div>
+                </form>
+            </div>
+            <div class="form-group">
+                <button type="submit" class="submit-btn">Update Employee</button>
+            </div>
+        </div>
+    </main>
+    <footer>
+        <p>ADMIN PANEL</p>
+    </footer>
+    <script src="edit_employee.js"></script>
+</body>
+</html>

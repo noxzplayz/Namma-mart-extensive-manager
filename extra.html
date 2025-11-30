@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Namma Mart - Extra</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="employee.css">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <h1>NAMMA MART</h1>
+            <p>Signature Of Quality</p>
+        </div>
+        <div class="manager-info">
+            <h2>EXTENSIVE MANAGER</h2>
+            <p>Designed By Yochan</p>
+        </div>
+    </header>
+    <div class="back-button">
+        <button onclick="window.location.href='employee.html'">Back</button>
+    </div>
+    <div class="toggle-container-top">
+        <label class="switch">
+            <input type="checkbox" id="completely-extra-toggle">
+            <span class="slider"></span>
+        </label>
+        <span class="toggle-label">COMPLETELY EXTRA</span>
+    </div>
+    <main>
+        <div class="employee-container">
+            <form id="extra-form">
+                <div class="input-fields">
+                    <label for="item-name">Item Name:</label>
+                    <input type="text" id="item-name" name="item-name" required><br><br>
+                    <label for="bill-number">Bill Number:</label>
+                    <input type="text" id="bill-number" name="bill-number"><br><br>
+                    <label for="extra-amount">Extra Amount:</label>
+                    <input type="text" id="extra-amount" name="extra-amount" required><br><br>
+                    <label for="mode-of-pay">Mode of Pay:</label>
+                    <select id="mode-of-pay" name="mode-of-pay" required>
+                        <option value="">Select Mode of Pay</option>
+                        <option value="Upi Pinelab">Upi Pinelab</option>
+                        <option value="Card Pinelab">Card Pinelab</option>
+                        <option value="Upi Paytm">Upi Paytm</option>
+                        <option value="Card Paytm">Card Paytm</option>
+                        <option value="Cash">Cash</option>
+                    </select><br><br>
+                    <button type="submit" class="submit-btn">Submit</button>
+                </div>
+            </form>
+        </div>
+    </main>
+    <footer>
+        <p>Made with ❤️ By <a href="https://www.instagram.com/yochxn.__/" target="_blank">Yochan</a></p>
+    </footer>
+    <script>
+        // Get employee ID from localStorage (assuming it's stored during login)
+        const employeeId = localStorage.getItem('employeeId');
+
+        document.getElementById('completely-extra-toggle').addEventListener('change', function() {
+            const billNumberInput = document.getElementById('bill-number');
+            if (this.checked) {
+                billNumberInput.value = 'CE';
+                billNumberInput.readOnly = true;
+            } else {
+                billNumberInput.value = '';
+                billNumberInput.readOnly = false;
+            }
+        });
+
+        document.getElementById('extra-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            if (!employeeId) {
+                alert('Employee ID not found. Please login again.');
+                return;
+            }
+
+            const formData = new FormData(this);
+            const data = {
+                employeeId: employeeId,
+                itemName: formData.get('item-name'),
+                billNumber: formData.get('bill-number'),
+                extraAmount: formData.get('extra-amount'),
+                modeOfPay: formData.get('mode-of-pay')
+            };
+
+            fetch('/api/extra', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert('Data saved successfully!');
+                    // Reset form
+                    this.reset();
+                    document.getElementById('bill-number').value = '';
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while saving data.');
+            });
+        });
+    </script>
+</body>
+</html>

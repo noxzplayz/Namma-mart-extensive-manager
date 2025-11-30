@@ -1,0 +1,2300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Namma Mart - View Report</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+        .filter-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            min-width: 200px;
+            flex: 1;
+        }
+        .filter-group label {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .filter-group input,
+        .filter-group select {
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .filter-buttons button {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .apply-btn {
+            background-color: #4caf50;
+            color: white;
+        }
+        .clear-btn {
+            background-color: #f44336;
+            color: white;
+        }
+        @media (max-width: 768px) {
+            .filter-form {
+                flex-direction: column;
+            }
+            .filter-group {
+                min-width: auto;
+            }
+        }
+        .employee-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .employee-btn {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .employee-btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <h1>NAMMA MART</h1>
+            <p>Signature Of Quality</p>
+        </div>
+        <div class="manager-info">
+            <h2>EXTENSIVE MANAGER</h2>
+            <p>Designed By Yochan</p>
+        </div>
+    </header>
+    <main>
+        <div class="content-container">
+            <h1>View Report</h1>
+            <div id="employee-list"></div>
+        </div>
+    </main>
+    <footer>
+        <p>ADMIN PANEL</p>
+    </footer>
+
+    <div id="date-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center;">
+        <div style="background:white; padding:20px; border-radius:10px; text-align:center;">
+            <h3>Select Date for Report</h3>
+            <form id="date-form">
+                <input type="date" id="report-date" required />
+                <br /><br />
+                <button type="submit">Submit</button>
+                <button type="button" onclick="closeModal()">Close</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.3); z-index: 10001; max-width: 400px; width: 90%;">
+        <h3>Edit Counter Data</h3>
+        <form id="edit-form">
+            <input type="hidden" id="edit-id" />
+            <div>
+                <label for="edit-shift-start">Shift Start Timestamp:</label><br />
+                <input type="datetime-local" id="edit-shift-start" name="shiftStartTimestamp" required />
+            </div>
+            <div>
+                <label for="edit-shift-end">Shift End Timestamp:</label><br />
+                <input type="datetime-local" id="edit-shift-end" name="shiftEndTimestamp" required />
+            </div>
+            <div>
+                <label for="edit-counter">Counter:</label><br />
+                <select id="edit-counter" name="counter" required>
+                    <option value="counter 1">counter 1</option>
+                    <option value="counter 2">counter 2</option>
+                </select>
+            </div>
+            <div>
+                <label for="edit-pineLabValue">Pine Lab Value:</label><br />
+                <input type="text" id="edit-pineLabValue" name="pineLabValue" />
+            </div>
+            <div>
+                <label for="edit-reason">Reason for Edit:</label><br />
+                <textarea id="edit-reason" name="editReason" rows="3" placeholder="Provide reason for edit" required></textarea>
+            </div>
+            <div style="margin-top: 10px;">
+                <button type="submit">Save</button>
+                <button type="button" onclick="closeEditModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Delete Reason Modal -->
+    <div id="delete-reason-modal" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.3); z-index: 10001; max-width: 400px; width: 90%;">
+        <h3>Reason for Deletion</h3>
+        <form id="delete-reason-form">
+            <input type="hidden" id="delete-id" />
+            <div>
+                <label for="delete-reason-text">Reason: </label><br />
+                <textarea id="delete-reason-text" name="reason" rows="4" style="width:100%;" placeholder="Please provide a reason for deleting this item." required></textarea>
+            </div>
+            <div style="margin-top: 10px;">
+                <button type="submit">Confirm Delete</button>
+                <button type="button" onclick="closeDeleteModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Edit Comparison Modal -->
+    <div id="edit-comparison-modal" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.3); z-index: 10001; max-width: 800px; width: 90%; max-height: 80%; overflow-y: auto;">
+        <h3>Edit Comparison</h3>
+        <div id="comparison-content"></div>
+        <div style="margin-top: 10px; text-align: right;">
+            <button onclick="closeEditComparisonModal()">Close</button>
+        </div>
+    </div>
+
+    <script>
+        let selectedEmployeeId;
+        let selectedDate;
+        let selectedIsHistory = false;
+
+        function showModal(employeeId) {
+            selectedEmployeeId = employeeId;
+            document.getElementById('date-modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('date-modal').style.display = 'none';
+        }
+
+        async function fetchEmployee(employeeId) {
+            const response = await fetch(`/api/employees/${employeeId}`);
+            if (response.ok) {
+                return response.json();
+            }
+            return null;
+        }
+
+        document.getElementById('date-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const date = document.getElementById('report-date').value;
+            if (date) {
+                selectedDate = date;
+                await fetchReport(selectedEmployeeId, date);
+                closeModal();
+            }
+        });
+
+        // Helper function to format date/time for counter_data
+        function formatDateTime(timestamp) {
+            if (!timestamp) return '';
+            const dt = new Date(timestamp);
+            if (isNaN(dt.getTime())) return '';
+            return dt.toLocaleString('en-US', { hour12: true });
+        }
+
+
+
+        async function fetchReport(employeeId, date) {
+            const employee = await fetchEmployee(employeeId);
+            if (!employee) {
+                alert('Error fetching employee details.');
+                return;
+            }
+
+            // Find shift start & end time for the given date from employee data or fallback to empty
+            let shiftStartTime = '';
+            let shiftEndTime = '';
+            if (employee.counter_selections && date) {
+                const todaysShift = employee.counter_selections.find(s => s.shiftStartTime && s.shiftStartTime.startsWith(date));
+                if (todaysShift) {
+                    shiftStartTime = todaysShift.shiftStartTime;
+                    shiftEndTime = todaysShift.shiftEndTime;
+                }
+            }
+            // Optionally, if employee holds multiple shifts, logic might vary, here assuming single shift fields
+
+            const fetchTypes = ['extra', 'delivery', 'bill_paid', 'issue', 'retail_credit', 'counter_data'];
+            const queryParts = [`employeeId=${employeeId}`];
+            if (date) {
+                queryParts.push(`date=${date}`);
+            }
+            if (shiftStartTime && shiftEndTime) {
+                queryParts.push(`shiftStartTime=${encodeURIComponent(shiftStartTime)}`);
+                queryParts.push(`shiftEndTime=${encodeURIComponent(shiftEndTime)}`);
+            }
+            const query = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+
+            const promises = fetchTypes.map(type =>
+                fetch(`/api/${type}${query}`).then(res => res.json())
+            );
+
+            try {
+                const results = await Promise.all(promises);
+                const allData = [];
+                fetchTypes.forEach((type, idx) => {
+                    if (Array.isArray(results[idx])) {
+                        results[idx].forEach(item => {
+                            allData.push({ ...item, type, employeeId: employee.id });
+                        });
+                    }
+                });
+
+                try {
+                    const historyRes = await fetch(`/api/history${query}`);
+                    if (historyRes.ok) {
+                        const history = await historyRes.json();
+                        if (Array.isArray(history)) {
+                            history.forEach(item => {
+                                if (item.action === 'delete') {
+                                    allData.push({ ...item.originalData, type: 'deleted', historyId: item.id });
+                                }
+                            });
+                        }
+                    }
+                } catch (err) {
+                    console.error('Error fetching history:', err);
+                }
+
+                if (!allData.length) {
+                    alert(date ? 'No data found for the selected date.' : 'No data found for this employee.');
+                } else {
+                    displayReport(allData, date, employee);
+                }
+            } catch (err) {
+                console.error('Error fetching report:', err);
+                alert('Error fetching report.');
+            }
+        }
+
+        function displayReport(data) {
+            const reportDivExisting = document.getElementById('report-display');
+            if (reportDivExisting) reportDivExisting.remove();
+
+            const reportDiv = document.createElement('div');
+            reportDiv.id = 'report-display';
+            reportDiv.style.marginTop = '20px';
+
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'employee-buttons';
+
+                // Rearrange to ensure 'counter Data' button after 'retail credit', and set precise button text as requested
+                const types = ['extra', 'delivery', 'bill_paid', 'issue', 'retail_credit', 'counter_data'];
+                types.forEach(type => {
+                    const button = document.createElement('button');
+                    button.className = 'employee-btn';
+                    // Set button text exactly as requested
+                    if(type === 'counter_data') {
+                        button.textContent = 'counter Data';
+                    } else {
+                        button.textContent = `View ${type.replace('_', ' ')}`;
+                    }
+                    button.addEventListener('click', () => {
+                        const typeData = data.filter(item => item.type === type);
+                        if (typeData.length > 0) {
+                            displayDataTable(type, typeData);
+                        } else {
+                            alert(`No data found for ${type}.`);
+                        }
+                    });
+                    buttonContainer.appendChild(button);
+                });
+
+            reportDiv.appendChild(buttonContainer);
+
+            const dataTableContainer = document.createElement('div');
+            dataTableContainer.id = 'data-table';
+            dataTableContainer.style.display = 'none';
+            dataTableContainer.style.marginTop = '20px';
+            reportDiv.appendChild(dataTableContainer);
+
+            const existingReport = document.getElementById('report-display');
+            if (existingReport) {
+                existingReport.remove();
+            }
+            document.querySelector('.content-container').appendChild(reportDiv);
+        }
+
+        function displayDataTable(title, data) {
+            const dataTableContainer = document.getElementById('data-table');
+            dataTableContainer.innerHTML = ''; // Clear previous table
+
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = 'Close';
+            closeBtn.addEventListener('click', () => {
+                dataTableContainer.style.display = 'none';
+            });
+            dataTableContainer.appendChild(closeBtn);
+
+            const tableTitle = document.createElement('h3');
+            tableTitle.textContent = title === 'counter_data' ? 'Counter Data' : title;
+            dataTableContainer.appendChild(tableTitle);
+
+            let filteredData = [...data]; // Copy of data for filtering
+
+            // Remove duplicate inner function formatDateTime inside counter_data block since global exists
+            if (title === 'counter_data') {
+                const table = document.createElement('table');
+                table.style.width = '100%';
+                table.style.borderCollapse = 'collapse';
+
+                const headers = ['Shift Start Timestamp', 'Counter', 'Pine Lab Value', 'Shift End Timestamp', 'Actions'];
+                const headerRow = document.createElement('tr');
+                headers.forEach(header => {
+                    const th = document.createElement('th');
+                    th.textContent = header;
+                    th.style.border = '1px solid #ddd';
+                    th.style.padding = '8px';
+                    th.style.backgroundColor = '#f2f2f2';
+                    headerRow.appendChild(th);
+                });
+                table.appendChild(headerRow);
+
+                filteredData.forEach(item => {
+                    const tr = document.createElement('tr');
+
+                    // Shift Start Timestamp
+                    const startTd = document.createElement('td');
+                    startTd.textContent = formatDateTime(item.shiftStartTime || item.shiftStartTimestamp || item.shift_start_timestamp || item.startTimestamp || item.start_time || item.start);
+                    startTd.style.border = '1px solid #ddd';
+                    startTd.style.padding = '8px';
+                    tr.appendChild(startTd);
+
+                    // Counter
+                    const counterTd = document.createElement('td');
+                    counterTd.textContent = item.counter || item.counterId || item.counter_id || '';
+                    counterTd.style.border = '1px solid #ddd';
+                    counterTd.style.padding = '8px';
+                    tr.appendChild(counterTd);
+
+                    // Pine Lab Value for counter 1 only
+                    const pineLabTd = document.createElement('td');
+                    if (counterTd.textContent.trim().toLowerCase() === 'counter 1' || counterTd.textContent.trim() === '1') {
+                        pineLabTd.textContent = item.pineLabValue || item.pine_lab_value || '';
+                    } else {
+                        pineLabTd.textContent = '';
+                    }
+                    pineLabTd.style.border = '1px solid #ddd';
+                    pineLabTd.style.padding = '8px';
+                    tr.appendChild(pineLabTd);
+
+                    // Shift End Timestamp
+                    const endTd = document.createElement('td');
+                    endTd.textContent = formatDateTime(item.shiftEndTimestamp || item.shift_end_timestamp || item.endTimestamp || item.end_time || item.end);
+                    endTd.style.border = '1px solid #ddd';
+                    endTd.style.padding = '8px';
+                    tr.appendChild(endTd);
+
+                    // Actions column with Edit and Delete buttons
+                    const actionsTd = document.createElement('td');
+                    actionsTd.style.border = '1px solid #ddd';
+                    actionsTd.style.padding = '8px';
+
+                    const editBtn = document.createElement('button');
+                    editBtn.textContent = 'Edit';
+                    editBtn.style.marginRight = '5px';
+                    editBtn.addEventListener('click', () => editCounterData(item));
+                    actionsTd.appendChild(editBtn);
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = 'Delete';
+                    deleteBtn.style.backgroundColor = '#f44336';
+                    deleteBtn.style.color = 'white';
+                    deleteBtn.addEventListener('click', () => deleteCounterData(item));
+                    actionsTd.appendChild(deleteBtn);
+
+                    tr.appendChild(actionsTd);
+
+                    table.appendChild(tr);
+                });
+
+                dataTableContainer.appendChild(table);
+
+                dataTableContainer.style.display = 'block';
+
+                // No filters needed for this custom table as per user request
+                return;
+            }
+
+            // Existing advanced filter form for other types
+
+            // Add advanced filter form for all other data types
+            const filterForm = document.createElement('div');
+            filterForm.className = 'filter-form';
+
+            const filterTitle = document.createElement('h4');
+            filterTitle.textContent = 'Advanced Filters';
+            filterForm.appendChild(filterTitle);
+
+            // Date range filter (common for all types)
+            const dateRangeDiv = document.createElement('div');
+            dateRangeDiv.className = 'filter-group';
+            const startDateLabel = document.createElement('label');
+            startDateLabel.textContent = 'Start Date';
+            const startDateInput = document.createElement('input');
+            startDateInput.type = 'date';
+            startDateInput.id = `start-date-filter-${title}`;
+            dateRangeDiv.appendChild(startDateLabel);
+            dateRangeDiv.appendChild(startDateInput);
+            filterForm.appendChild(dateRangeDiv);
+
+            const endDateDiv = document.createElement('div');
+            endDateDiv.className = 'filter-group';
+            const endDateLabel = document.createElement('label');
+            endDateLabel.textContent = 'End Date';
+            const endDateInput = document.createElement('input');
+            endDateInput.type = 'date';
+            endDateInput.id = `end-date-filter-${title}`;
+            endDateDiv.appendChild(endDateLabel);
+            endDateDiv.appendChild(endDateInput);
+            filterForm.appendChild(endDateDiv);
+
+            if (title === 'extra') {
+                // Item Name filter
+                const itemNameDiv = document.createElement('div');
+                itemNameDiv.className = 'filter-group';
+                const itemNameLabel = document.createElement('label');
+                itemNameLabel.textContent = 'Item Name';
+                const itemNameInput = document.createElement('input');
+                itemNameInput.type = 'text';
+                itemNameInput.id = `item-name-filter-${title}`;
+                itemNameInput.placeholder = 'Enter item name';
+                itemNameDiv.appendChild(itemNameLabel);
+                itemNameDiv.appendChild(itemNameInput);
+                filterForm.appendChild(itemNameDiv);
+
+                // Bill Number filter
+                const billNumberDiv = document.createElement('div');
+                billNumberDiv.className = 'filter-group';
+                const billNumberLabel = document.createElement('label');
+                billNumberLabel.textContent = 'Bill Number';
+                const billNumberInput = document.createElement('input');
+                billNumberInput.type = 'text';
+                billNumberInput.id = `bill-number-filter-${title}`;
+                billNumberInput.placeholder = 'Enter bill number';
+                billNumberDiv.appendChild(billNumberLabel);
+                billNumberDiv.appendChild(billNumberInput);
+                filterForm.appendChild(billNumberDiv);
+
+                // Mode of Pay filter
+                const modeOfPayDiv = document.createElement('div');
+                modeOfPayDiv.className = 'filter-group';
+                const modeOfPayLabel = document.createElement('label');
+                modeOfPayLabel.textContent = 'Mode of Pay';
+                const modeOfPaySelect = document.createElement('select');
+                modeOfPaySelect.id = `mode-of-pay-filter-${title}`;
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = 'All';
+                modeOfPaySelect.appendChild(defaultOption);
+                const payModes = ['Cash', 'Card', 'UPI', 'Other'];
+                payModes.forEach(mode => {
+                    const option = document.createElement('option');
+                    option.value = mode;
+                    option.textContent = mode;
+                    modeOfPaySelect.appendChild(option);
+                });
+                modeOfPayDiv.appendChild(modeOfPayLabel);
+                modeOfPayDiv.appendChild(modeOfPaySelect);
+                filterForm.appendChild(modeOfPayDiv);
+
+                // Amount range filter
+                const amountRangeDiv = document.createElement('div');
+                amountRangeDiv.className = 'filter-group';
+                const minAmountLabel = document.createElement('label');
+                minAmountLabel.textContent = 'Min Amount';
+                const minAmountInput = document.createElement('input');
+                minAmountInput.type = 'number';
+                minAmountInput.id = `min-amount-filter-${title}`;
+                minAmountInput.placeholder = '0';
+                amountRangeDiv.appendChild(minAmountLabel);
+                amountRangeDiv.appendChild(minAmountInput);
+                filterForm.appendChild(amountRangeDiv);
+
+                const maxAmountDiv = document.createElement('div');
+                maxAmountDiv.className = 'filter-group';
+                const maxAmountLabel = document.createElement('label');
+                maxAmountLabel.textContent = 'Max Amount';
+                const maxAmountInput = document.createElement('input');
+                maxAmountInput.type = 'number';
+                maxAmountInput.id = `max-amount-filter-${title}`;
+                maxAmountInput.placeholder = '10000';
+                maxAmountDiv.appendChild(maxAmountLabel);
+                maxAmountDiv.appendChild(maxAmountInput);
+                filterForm.appendChild(maxAmountDiv);
+
+            } else if (title === 'delivery') {
+                // Bill Number filter
+                const billNumberDiv = document.createElement('div');
+                billNumberDiv.className = 'filter-group';
+                const billNumberLabel = document.createElement('label');
+                billNumberLabel.textContent = 'Bill Number';
+                const billNumberInput = document.createElement('input');
+                billNumberInput.type = 'text';
+                billNumberInput.id = `bill-number-filter-${title}`;
+                billNumberInput.placeholder = 'Enter bill number';
+                billNumberDiv.appendChild(billNumberLabel);
+                billNumberDiv.appendChild(billNumberInput);
+                filterForm.appendChild(billNumberDiv);
+
+                // Mode of Pay filter
+                const modeOfPayDiv = document.createElement('div');
+                modeOfPayDiv.className = 'filter-group';
+                const modeOfPayLabel = document.createElement('label');
+                modeOfPayLabel.textContent = 'Mode of Pay';
+                const modeOfPaySelect = document.createElement('select');
+                modeOfPaySelect.id = `mode-of-pay-filter-${title}`;
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = 'All';
+                modeOfPaySelect.appendChild(defaultOption);
+                ['Cash', 'Card', 'UPI', 'Other'].forEach(mode => {
+                    const option = document.createElement('option');
+                    option.value = mode;
+                    option.textContent = mode;
+                    modeOfPaySelect.appendChild(option);
+                });
+                modeOfPayDiv.appendChild(modeOfPayLabel);
+                modeOfPayDiv.appendChild(modeOfPaySelect);
+                filterForm.appendChild(modeOfPayDiv);
+
+                // Amount range filter
+                const amountRangeDiv = document.createElement('div');
+                amountRangeDiv.className = 'filter-group';
+                const minAmountLabel = document.createElement('label');
+                minAmountLabel.textContent = 'Min Amount';
+                const minAmountInput = document.createElement('input');
+                minAmountInput.type = 'number';
+                minAmountInput.id = `min-amount-filter-${title}`;
+                minAmountInput.placeholder = '0';
+                amountRangeDiv.appendChild(minAmountLabel);
+                amountRangeDiv.appendChild(minAmountInput);
+                filterForm.appendChild(amountRangeDiv);
+
+                const maxAmountDiv = document.createElement('div');
+                maxAmountDiv.className = 'filter-group';
+                const maxAmountLabel = document.createElement('label');
+                maxAmountLabel.textContent = 'Max Amount';
+                const maxAmountInput = document.createElement('input');
+                maxAmountInput.type = 'number';
+                maxAmountInput.id = `max-amount-filter-${title}`;
+                maxAmountInput.placeholder = '10000';
+                maxAmountDiv.appendChild(maxAmountLabel);
+                maxAmountDiv.appendChild(maxAmountInput);
+                filterForm.appendChild(maxAmountDiv);
+
+            } else if (title === 'bill_paid') {
+                // Vendor/Supplier filter
+                const vendorDiv = document.createElement('div');
+                vendorDiv.className = 'filter-group';
+                const vendorLabel = document.createElement('label');
+                vendorLabel.textContent = 'Vendor/Supplier';
+                const vendorInput = document.createElement('input');
+                vendorInput.type = 'text';
+                vendorInput.id = `vendor-filter-${title}`;
+                vendorInput.placeholder = 'Enter vendor/supplier';
+                vendorDiv.appendChild(vendorLabel);
+                vendorDiv.appendChild(vendorInput);
+                filterForm.appendChild(vendorDiv);
+
+                // Amount Paid range filter
+                const amountRangeDiv = document.createElement('div');
+                amountRangeDiv.className = 'filter-group';
+                const minAmountLabel = document.createElement('label');
+                minAmountLabel.textContent = 'Min Amount Paid';
+                const minAmountInput = document.createElement('input');
+                minAmountInput.type = 'number';
+                minAmountInput.id = `min-amount-filter-${title}`;
+                minAmountInput.placeholder = '0';
+                amountRangeDiv.appendChild(minAmountLabel);
+                amountRangeDiv.appendChild(minAmountInput);
+                filterForm.appendChild(amountRangeDiv);
+
+                const maxAmountDiv = document.createElement('div');
+                maxAmountDiv.className = 'filter-group';
+                const maxAmountLabel = document.createElement('label');
+                maxAmountLabel.textContent = 'Max Amount Paid';
+                const maxAmountInput = document.createElement('input');
+                maxAmountInput.type = 'number';
+                maxAmountInput.id = `max-amount-filter-${title}`;
+                maxAmountInput.placeholder = '10000';
+                maxAmountDiv.appendChild(maxAmountLabel);
+                maxAmountDiv.appendChild(maxAmountInput);
+                filterForm.appendChild(maxAmountDiv);
+
+            } else if (title === 'issue') {
+                // Bill Number filter
+                const billNumberDiv = document.createElement('div');
+                billNumberDiv.className = 'filter-group';
+                const billNumberLabel = document.createElement('label');
+                billNumberLabel.textContent = 'Bill Number';
+                const billNumberInput = document.createElement('input');
+                billNumberInput.type = 'text';
+                billNumberInput.id = `bill-number-filter-${title}`;
+                billNumberInput.placeholder = 'Enter bill number';
+                billNumberDiv.appendChild(billNumberLabel);
+                billNumberDiv.appendChild(billNumberInput);
+                filterForm.appendChild(billNumberDiv);
+
+                // Issue Description filter
+                const issueDescDiv = document.createElement('div');
+                issueDescDiv.className = 'filter-group';
+                const issueDescLabel = document.createElement('label');
+                issueDescLabel.textContent = 'Issue Description';
+                const issueDescInput = document.createElement('input');
+                issueDescInput.type = 'text';
+                issueDescInput.id = `issue-desc-filter-${title}`;
+                issueDescInput.placeholder = 'Enter issue description';
+                issueDescDiv.appendChild(issueDescLabel);
+                issueDescDiv.appendChild(issueDescInput);
+                filterForm.appendChild(issueDescDiv);
+
+            } else if (title === 'retail_credit') {
+                // Phone Number filter
+                const phoneDiv = document.createElement('div');
+                phoneDiv.className = 'filter-group';
+                const phoneLabel = document.createElement('label');
+                phoneLabel.textContent = 'Phone Number';
+                const phoneInput = document.createElement('input');
+                phoneInput.type = 'text';
+                phoneInput.id = `phone-filter-${title}`;
+                phoneInput.placeholder = 'Enter phone number';
+                phoneDiv.appendChild(phoneLabel);
+                phoneDiv.appendChild(phoneInput);
+                filterForm.appendChild(phoneDiv);
+
+                // Mode of Pay filter
+                const modeOfPayDiv = document.createElement('div');
+                modeOfPayDiv.className = 'filter-group';
+                const modeOfPayLabel = document.createElement('label');
+                modeOfPayLabel.textContent = 'Mode of Pay';
+                const modeOfPaySelect = document.createElement('select');
+                modeOfPaySelect.id = `mode-of-pay-filter-${title}`;
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = 'All';
+                modeOfPaySelect.appendChild(defaultOption);
+                const payModes = ['Cash', 'Card', 'UPI', 'Other'];
+                payModes.forEach(mode => {
+                    const option = document.createElement('option');
+                    option.value = mode;
+                    option.textContent = mode;
+                    modeOfPaySelect.appendChild(option);
+                });
+                modeOfPayDiv.appendChild(modeOfPayLabel);
+                modeOfPayDiv.appendChild(modeOfPaySelect);
+                filterForm.appendChild(modeOfPayDiv);
+
+                // Amount range filter
+                const amountRangeDiv = document.createElement('div');
+                amountRangeDiv.className = 'filter-group';
+                const minAmountLabel = document.createElement('label');
+                minAmountLabel.textContent = 'Min Amount';
+                const minAmountInput = document.createElement('input');
+                minAmountInput.type = 'number';
+                minAmountInput.id = `min-amount-filter-${title}`;
+                minAmountInput.placeholder = '0';
+                amountRangeDiv.appendChild(minAmountLabel);
+                amountRangeDiv.appendChild(minAmountInput);
+                filterForm.appendChild(amountRangeDiv);
+
+                const maxAmountDiv = document.createElement('div');
+                maxAmountDiv.className = 'filter-group';
+                const maxAmountLabel = document.createElement('label');
+                maxAmountLabel.textContent = 'Max Amount';
+                const maxAmountInput = document.createElement('input');
+                maxAmountInput.type = 'number';
+                maxAmountInput.id = `max-amount-filter-${title}`;
+                maxAmountInput.placeholder = '10000';
+                maxAmountDiv.appendChild(maxAmountLabel);
+                maxAmountDiv.appendChild(maxAmountInput);
+                filterForm.appendChild(maxAmountDiv);
+            }
+
+            // Filter buttons
+            const filterButtonsDiv = document.createElement('div');
+            filterButtonsDiv.className = 'filter-buttons';
+            const applyBtn = document.createElement('button');
+            applyBtn.className = 'apply-btn';
+            applyBtn.textContent = 'Apply Filters';
+            applyBtn.addEventListener('click', () => {
+                applyFilters(data);
+            });
+            const clearBtn = document.createElement('button');
+            clearBtn.className = 'clear-btn';
+            clearBtn.textContent = 'Clear Filters';
+            clearBtn.addEventListener('click', () => {
+                clearFilters();
+                applyFilters(data);
+            });
+            filterButtonsDiv.appendChild(applyBtn);
+            filterButtonsDiv.appendChild(clearBtn);
+            filterForm.appendChild(filterButtonsDiv);
+
+            dataTableContainer.appendChild(filterForm);
+
+            function applyFilters(originalData) {
+                const getVal = id => {
+                    const el = document.getElementById(id);
+                    return el ? el.value : '';
+                };
+
+                const startDate = getVal(`start-date-filter-${title}`);
+                const endDate = getVal(`end-date-filter-${title}`);
+
+                // Pre-read type-specific filters to avoid repeated DOM lookups
+                const filters = {};
+                if (title === 'extra') {
+                    filters.itemName = getVal(`item-name-filter-${title}`).toLowerCase();
+                    filters.billNumber = getVal(`bill-number-filter-${title}`).toLowerCase();
+                    filters.modeOfPay = getVal(`mode-of-pay-filter-${title}`);
+                    filters.minAmount = parseFloat(getVal(`min-amount-filter-${title}`)) || 0;
+                    filters.maxAmount = parseFloat(getVal(`max-amount-filter-${title}`)) || Infinity;
+                } else if (title === 'delivery') {
+                    filters.billNumber = getVal(`bill-number-filter-${title}`).toLowerCase();
+                    filters.modeOfPay = getVal(`mode-of-pay-filter-${title}`);
+                    filters.minAmount = parseFloat(getVal(`min-amount-filter-${title}`)) || 0;
+                    filters.maxAmount = parseFloat(getVal(`max-amount-filter-${title}`)) || Infinity;
+                } else if (title === 'bill_paid') {
+                    filters.vendor = getVal(`vendor-filter-${title}`).toLowerCase();
+                    filters.minAmount = parseFloat(getVal(`min-amount-filter-${title}`)) || 0;
+                    filters.maxAmount = parseFloat(getVal(`max-amount-filter-${title}`)) || Infinity;
+                } else if (title === 'issue') {
+                    filters.billNumber = getVal(`bill-number-filter-${title}`).toLowerCase();
+                    filters.issueDesc = getVal(`issue-desc-filter-${title}`).toLowerCase();
+                } else if (title === 'retail_credit') {
+                    filters.phone = getVal(`phone-filter-${title}`).toLowerCase();
+                    filters.modeOfPay = getVal(`mode-of-pay-filter-${title}`);
+                    filters.minAmount = parseFloat(getVal(`min-amount-filter-${title}`)) || 0;
+                    filters.maxAmount = parseFloat(getVal(`max-amount-filter-${title}`)) || Infinity;
+                }
+
+                filteredData = originalData.filter(item => {
+                    // Date filter (common)
+                    if (startDate || endDate) {
+                        const ts = item.timestamp || itemTimestampFromItem(item);
+                        if (!ts) return false;
+                        const itemDate = new Date(ts);
+                        if (isNaN(itemDate.getTime())) return false;
+                        const iso = itemDate.toISOString().split('T')[0];
+                        if (startDate && iso < startDate) return false;
+                        if (endDate && iso > endDate) return false;
+                    }
+
+                    // Type-specific filters
+                    try {
+                        if (title === 'extra') {
+                            if (filters.itemName && !(String(item.itemName||'').toLowerCase().includes(filters.itemName))) return false;
+                            if (filters.billNumber && !(String(item.billNumber||'').toLowerCase().includes(filters.billNumber))) return false;
+                            if (filters.modeOfPay && String(item.modeOfPay||'') !== filters.modeOfPay) return false;
+                            const amount = parseFloat(item.extraAmount) || 0;
+                            if (amount < filters.minAmount || amount > filters.maxAmount) return false;
+                        } else if (title === 'delivery') {
+                            if (filters.billNumber && !(String(item.billNumber||'').toLowerCase().includes(filters.billNumber))) return false;
+                            if (filters.modeOfPay && String(item.modeOfPay||'') !== filters.modeOfPay) return false;
+                            const amount = parseFloat(item.amount) || 0;
+                            if (amount < filters.minAmount || amount > filters.maxAmount) return false;
+                        } else if (title === 'bill_paid') {
+                            if (filters.vendor && !(String(item.vendorSupplier||'').toLowerCase().includes(filters.vendor))) return false;
+                            const amount = parseFloat(item.amountPaid) || 0;
+                            if (amount < filters.minAmount || amount > filters.maxAmount) return false;
+                        } else if (title === 'issue') {
+                            if (filters.billNumber && !(String(item.billNumber||'').toLowerCase().includes(filters.billNumber))) return false;
+                            if (filters.issueDesc && !(String(item.issueDescription||'').toLowerCase().includes(filters.issueDesc))) return false;
+                        } else if (title === 'retail_credit') {
+                            if (filters.phone && !(String(item.phoneNumber||'').toLowerCase().includes(filters.phone))) return false;
+                            if (filters.modeOfPay && String(item.modeOfPay||'') !== filters.modeOfPay) return false;
+                            const amount = parseFloat(item.amount) || 0;
+                            if (amount < filters.minAmount || amount > filters.maxAmount) return false;
+                        }
+                    } catch (err) {
+                        // If any property access fails, skip this item
+                        return false;
+                    }
+
+                    return true;
+                });
+
+                renderTable(filteredData);
+            }
+
+            function clearFilters() {
+                const setVal = id => { const el = document.getElementById(id); if (el) el.value = ''; };
+                setVal(`start-date-filter-${title}`);
+                setVal(`end-date-filter-${title}`);
+
+                if (title === 'extra') {
+                    setVal(`item-name-filter-${title}`);
+                    setVal(`bill-number-filter-${title}`);
+                    setVal(`mode-of-pay-filter-${title}`);
+                    setVal(`min-amount-filter-${title}`);
+                    setVal(`max-amount-filter-${title}`);
+                } else if (title === 'delivery') {
+                    setVal(`bill-number-filter-${title}`);
+                    setVal(`mode-of-pay-filter-${title}`);
+                    setVal(`min-amount-filter-${title}`);
+                    setVal(`max-amount-filter-${title}`);
+                } else if (title === 'bill_paid') {
+                    setVal(`vendor-filter-${title}`);
+                    setVal(`min-amount-filter-${title}`);
+                    setVal(`max-amount-filter-${title}`);
+                } else if (title === 'issue') {
+                    setVal(`bill-number-filter-${title}`);
+                    setVal(`issue-desc-filter-${title}`);
+                } else if (title === 'retail_credit') {
+                    setVal(`phone-filter-${title}`);
+                    setVal(`mode-of-pay-filter-${title}`);
+                    setVal(`min-amount-filter-${title}`);
+                    setVal(`max-amount-filter-${title}`);
+                }
+            }
+
+            // Helper to get timestamp when items may use different keys
+            function itemTimestampFromItem(item) {
+                return item.timestamp || item.time || item.date || null;
+            }
+
+            // Return the local YYYY-MM-DD string for a timestamp
+            function itemLocalDateString(ts) {
+                if (!ts) return null;
+                const d = new Date(ts);
+                if (isNaN(d.getTime())) return null;
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                return `${y}-${m}-${dd}`;
+            }
+
+            function renderTable(dataToRender) {
+                // Remove existing table if present
+                const existingTable = dataTableContainer.querySelector('table');
+                if (existingTable) existingTable.remove();
+
+                // Remove any previously-added export buttons to avoid duplicates
+                const prevExports = dataTableContainer.querySelectorAll('button.export-btn');
+                prevExports.forEach(b => b.remove());
+
+                const table = document.createElement('table');
+                table.style.width = '100%';
+                table.style.borderCollapse = 'collapse';
+
+                // For well-known types, use predefined column order for readability
+                let headers = [];
+                if (title === 'extra') headers = ['timestamp','itemName','billNumber','extraAmount','modeOfPay'];
+                else if (title === 'delivery') headers = ['timestamp','billNumber','amount','extraAmount','totalAmount','modeOfPay'];
+                else if (title === 'bill_paid') headers = ['timestamp','vendorSupplier','amountPaid'];
+                else if (title === 'issue') headers = ['timestamp','billNumber','issueDescription'];
+                else if (title === 'retail_credit') headers = ['timestamp','phoneNumber','amount','modeOfPay'];
+                else {
+                    const allKeys = new Set();
+                    dataToRender.forEach(item => Object.keys(item).forEach(k => { if (k !== 'id' && k !== 'type') allKeys.add(k); }));
+                    headers = Array.from(allKeys);
+                }
+
+                const headerRow = document.createElement('tr');
+                headers.forEach(header => {
+                    const th = document.createElement('th');
+                    th.textContent = header;
+                    th.style.border = '1px solid #ddd';
+                    th.style.padding = '8px';
+                    th.style.backgroundColor = '#f2f2f2';
+                    headerRow.appendChild(th);
+                });
+                table.appendChild(headerRow);
+
+                dataToRender.forEach(item => {
+                    const tr = document.createElement('tr');
+                    headers.forEach(header => {
+                        const td = document.createElement('td');
+                        let value = (item[header] !== undefined && item[header] !== null) ? item[header] : '';
+                        if ((header === 'timestamp' || header === 'time' || header === 'date') && value) {
+                            const date = new Date(value);
+                            if (!isNaN(date.getTime())) value = date.toLocaleString('en-US', { hour12: true });
+                        }
+                        td.textContent = value;
+                        td.style.border = '1px solid #ddd';
+                        td.style.padding = '8px';
+                        tr.appendChild(td);
+                    });
+                    table.appendChild(tr);
+                });
+
+                dataTableContainer.appendChild(table);
+
+                const exportBtn = document.createElement('button');
+                exportBtn.className = 'export-btn';
+                exportBtn.textContent = 'Export to Excel';
+                exportBtn.style.marginTop = '10px';
+                exportBtn.addEventListener('click', () => exportToExcel(dataToRender));
+                dataTableContainer.appendChild(exportBtn);
+            }
+
+            renderTable(filteredData);
+
+            dataTableContainer.style.display = 'block';
+        }
+
+        async function fetchHistory(employeeId, date) {
+            const reportDiv = document.createElement('div');
+            reportDiv.id = 'report-display';
+            reportDiv.style.marginTop = '20px';
+
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'employee-buttons';
+
+            const historyTypes = ['extra', 'delivery', 'bill_paid', 'issue', 'retail_credit'];
+            historyTypes.forEach(type => {
+                const button = document.createElement('button');
+                button.className = 'employee-btn';
+                button.textContent = `View ${type.replace('_', ' ')} history`;
+                button.addEventListener('click', () => {
+                    fetchHistoryByType(type, employeeId, date);
+                });
+                buttonContainer.appendChild(button);
+            });
+
+            // Add button to view all history
+            const allHistoryButton = document.createElement('button');
+            allHistoryButton.className = 'employee-btn';
+            allHistoryButton.textContent = 'View All History';
+            allHistoryButton.addEventListener('click', () => {
+                fetchAllHistory();
+            });
+            buttonContainer.appendChild(allHistoryButton);
+
+            reportDiv.appendChild(buttonContainer);
+
+            const dataTableContainer = document.createElement('div');
+            dataTableContainer.id = 'data-table';
+            dataTableContainer.style.display = 'none';
+            dataTableContainer.style.marginTop = '20px';
+            reportDiv.appendChild(dataTableContainer);
+
+            const existingReport = document.getElementById('report-display');
+            if (existingReport) {
+                existingReport.remove();
+            }
+            document.querySelector('.content-container').appendChild(reportDiv);
+        }
+
+        async function fetchAllHistory() {
+            try {
+                const employeesResponse = await fetch('/api/employees');
+                if (!employeesResponse.ok) {
+                    alert('Error fetching employees.');
+                    return;
+                }
+                const employees = await employeesResponse.json();
+
+                const allHistoryPromises = employees.map(employee =>
+                    fetch(`/api/history?employeeId=${employee.id}`).then(res => res.json())
+                );
+
+                const allHistoryResults = await Promise.all(allHistoryPromises);
+                const allHistory = allHistoryResults.flat().map(item => ({
+                    ...item,
+                    employeeName: employees.find(emp => emp.id === item.employeeId)?.name || 'Unknown'
+                }));
+
+                displayAllHistory(allHistory);
+            } catch (error) {
+                console.error('Error fetching all history:', error);
+                alert('Error fetching all history.');
+            }
+        }
+
+        function displayAllHistory(data) {
+            const dataTableContainer = document.getElementById('data-table');
+            dataTableContainer.innerHTML = ''; // Clear previous table
+
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = 'Close';
+            closeBtn.addEventListener('click', () => {
+                dataTableContainer.style.display = 'none';
+            });
+            dataTableContainer.appendChild(closeBtn);
+
+            const tableTitle = document.createElement('h3');
+            tableTitle.textContent = 'All History';
+            dataTableContainer.appendChild(tableTitle);
+
+            let filteredData = [...data]; // Copy of data for filtering
+
+            // Add advanced filter form for all history
+            const filterForm = document.createElement('div');
+            filterForm.className = 'filter-form';
+
+            const filterTitle = document.createElement('h4');
+            filterTitle.textContent = 'Advanced Filters';
+            filterForm.appendChild(filterTitle);
+
+            // Date range filter
+            const dateRangeDiv = document.createElement('div');
+            dateRangeDiv.className = 'filter-group';
+            const startDateLabel = document.createElement('label');
+            startDateLabel.textContent = 'Start Date';
+            const startDateInput = document.createElement('input');
+            startDateInput.type = 'date';
+            startDateInput.id = 'start-date-filter-history';
+            dateRangeDiv.appendChild(startDateLabel);
+            dateRangeDiv.appendChild(startDateInput);
+            filterForm.appendChild(dateRangeDiv);
+
+            const endDateDiv = document.createElement('div');
+            endDateDiv.className = 'filter-group';
+            const endDateLabel = document.createElement('label');
+            endDateLabel.textContent = 'End Date';
+            const endDateInput = document.createElement('input');
+            endDateInput.type = 'date';
+            endDateInput.id = 'end-date-filter-history';
+            endDateDiv.appendChild(endDateLabel);
+            endDateDiv.appendChild(endDateInput);
+            filterForm.appendChild(endDateDiv);
+
+            // Type filter
+            const typeDiv = document.createElement('div');
+            typeDiv.className = 'filter-group';
+            const typeLabel = document.createElement('label');
+            typeLabel.textContent = 'Type';
+            const typeSelect = document.createElement('select');
+            typeSelect.id = 'type-filter-history';
+            const defaultTypeOption = document.createElement('option');
+            defaultTypeOption.value = '';
+            defaultTypeOption.textContent = 'All';
+            typeSelect.appendChild(defaultTypeOption);
+            const types = ['extra', 'delivery', 'bill_paid', 'issue', 'retail_credit'];
+            types.forEach(type => {
+                const option = document.createElement('option');
+                option.value = type;
+                option.textContent = type.replace('_', ' ');
+                typeSelect.appendChild(option);
+            });
+            typeDiv.appendChild(typeLabel);
+            typeDiv.appendChild(typeSelect);
+            filterForm.appendChild(typeDiv);
+
+            // Action filter
+            const actionDiv = document.createElement('div');
+            actionDiv.className = 'filter-group';
+            const actionLabel = document.createElement('label');
+            actionLabel.textContent = 'Action';
+            const actionSelect = document.createElement('select');
+            actionSelect.id = 'action-filter-history';
+            const defaultActionOption = document.createElement('option');
+            defaultActionOption.value = '';
+            defaultActionOption.textContent = 'All';
+            actionSelect.appendChild(defaultActionOption);
+            const actions = ['edit', 'delete'];
+            actions.forEach(action => {
+                const option = document.createElement('option');
+                option.value = action;
+                option.textContent = action;
+                actionSelect.appendChild(option);
+            });
+            actionDiv.appendChild(actionLabel);
+            actionDiv.appendChild(actionSelect);
+            filterForm.appendChild(actionDiv);
+
+            // Employee filter
+            const employeeDiv = document.createElement('div');
+            employeeDiv.className = 'filter-group';
+            const employeeLabel = document.createElement('label');
+            employeeLabel.textContent = 'Employee';
+            const employeeSelect = document.createElement('select');
+            employeeSelect.id = 'employee-filter-history';
+            const defaultEmployeeOption = document.createElement('option');
+            defaultEmployeeOption.value = '';
+            defaultEmployeeOption.textContent = 'All';
+            employeeSelect.appendChild(defaultEmployeeOption);
+            // Populate employee options dynamically
+            fetch('/api/employees').then(res => res.json()).then(employees => {
+                employees.forEach(employee => {
+                    const option = document.createElement('option');
+                    option.value = employee.id;
+                    option.textContent = employee.name;
+                    employeeSelect.appendChild(option);
+                });
+            });
+            employeeDiv.appendChild(employeeLabel);
+            employeeDiv.appendChild(employeeSelect);
+            filterForm.appendChild(employeeDiv);
+
+            // Sort options
+            const sortDiv = document.createElement('div');
+            sortDiv.className = 'filter-group';
+            const sortLabel = document.createElement('label');
+            sortLabel.textContent = 'Sort By';
+            const sortSelect = document.createElement('select');
+            sortSelect.id = 'sort-filter-history';
+            const sortOptions = [
+                { value: 'timestamp-desc', text: 'Timestamp (Newest First)' },
+                { value: 'timestamp-asc', text: 'Timestamp (Oldest First)' },
+                { value: 'type-asc', text: 'Type (A-Z)' },
+                { value: 'action-asc', text: 'Action (A-Z)' },
+                { value: 'employee-asc', text: 'Employee (A-Z)' }
+            ];
+            sortOptions.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt.value;
+                option.textContent = opt.text;
+                sortSelect.appendChild(option);
+            });
+            sortDiv.appendChild(sortLabel);
+            sortDiv.appendChild(sortSelect);
+            filterForm.appendChild(sortDiv);
+
+            // Filter buttons
+            const filterButtonsDiv = document.createElement('div');
+            filterButtonsDiv.className = 'filter-buttons';
+            const applyBtn = document.createElement('button');
+            applyBtn.className = 'apply-btn';
+            applyBtn.textContent = 'Apply Filters';
+            applyBtn.addEventListener('click', () => {
+                applyHistoryFilters(data);
+            });
+            const clearBtn = document.createElement('button');
+            clearBtn.className = 'clear-btn';
+            clearBtn.textContent = 'Clear Filters';
+            clearBtn.addEventListener('click', () => {
+                clearHistoryFilters();
+                applyHistoryFilters(data);
+            });
+            filterButtonsDiv.appendChild(applyBtn);
+            filterButtonsDiv.appendChild(clearBtn);
+            filterForm.appendChild(filterButtonsDiv);
+
+            dataTableContainer.appendChild(filterForm);
+
+            function applyHistoryFilters(originalData) {
+                const startDate = document.getElementById('start-date-filter-history').value;
+                const endDate = document.getElementById('end-date-filter-history').value;
+                const type = document.getElementById('type-filter-history').value;
+                const action = document.getElementById('action-filter-history').value;
+                const employeeId = document.getElementById('employee-filter-history').value;
+                const sortBy = document.getElementById('sort-filter-history').value;
+
+                filteredData = originalData.filter(item => {
+                    if (startDate || endDate) {
+                        const ts = item.timestamp;
+                        if (!ts) return false;
+                        const itemDate = new Date(ts);
+                        if (isNaN(itemDate.getTime())) return false;
+                        const iso = itemDate.toISOString().split('T')[0];
+                        if (startDate && iso < startDate) return false;
+                        if (endDate && iso > endDate) return false;
+                    }
+                    if (type && item.type !== type) return false;
+                    if (action && item.action !== action) return false;
+                    if (employeeId && item.employeeId !== employeeId) return false;
+                    return true;
+                });
+
+                // Apply sorting
+                if (sortBy) {
+                    const [field, order] = sortBy.split('-');
+                    filteredData.sort((a, b) => {
+                        let aVal, bVal;
+                        if (field === 'timestamp') {
+                            aVal = new Date(a.timestamp);
+                            bVal = new Date(b.timestamp);
+                        } else if (field === 'employee') {
+                            aVal = a.employeeName.toLowerCase();
+                            bVal = b.employeeName.toLowerCase();
+                        } else {
+                            aVal = (a[field] || '').toLowerCase();
+                            bVal = (b[field] || '').toLowerCase();
+                        }
+                        if (order === 'asc') {
+                            return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+                        } else {
+                            return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+                        }
+                    });
+                }
+
+                renderHistoryTable(filteredData);
+            }
+
+            function clearHistoryFilters() {
+                document.getElementById('start-date-filter-history').value = '';
+                document.getElementById('end-date-filter-history').value = '';
+                document.getElementById('type-filter-history').value = '';
+                document.getElementById('action-filter-history').value = '';
+                document.getElementById('employee-filter-history').value = '';
+                document.getElementById('sort-filter-history').value = 'timestamp-desc';
+            }
+
+            function renderHistoryTable(dataToRender) {
+                // Remove existing table if present
+                const existingTable = dataTableContainer.querySelector('table');
+                if (existingTable) existingTable.remove();
+
+                const table = document.createElement('table');
+                table.style.width = '100%';
+                table.style.borderCollapse = 'collapse';
+
+                const headers = ['Timestamp', 'Employee', 'Action', 'Type', 'Item ID', 'Reason', 'Actions'];
+                const headerRow = document.createElement('tr');
+                headers.forEach(header => {
+                    const th = document.createElement('th');
+                    th.textContent = header;
+                    th.style.border = '1px solid #ddd';
+                    th.style.padding = '8px';
+                    th.style.backgroundColor = '#f2f2f2';
+                    headerRow.appendChild(th);
+                });
+                table.appendChild(headerRow);
+
+                dataToRender.forEach(item => {
+                    const tr = document.createElement('tr');
+
+                    // Timestamp
+                    const timestampTd = document.createElement('td');
+                    let timestampValue = item.timestamp || '';
+                    if (timestampValue) {
+                        const date = new Date(timestampValue);
+                        timestampValue = date.toLocaleString('en-US', { hour12: true });
+                    }
+                    timestampTd.textContent = timestampValue;
+                    timestampTd.style.border = '1px solid #ddd';
+                    timestampTd.style.padding = '8px';
+                    tr.appendChild(timestampTd);
+
+                    // Employee
+                    const employeeTd = document.createElement('td');
+                    employeeTd.textContent = item.employeeName || '';
+                    employeeTd.style.border = '1px solid #ddd';
+                    employeeTd.style.padding = '8px';
+                    tr.appendChild(employeeTd);
+
+                    // Action
+                    const actionTd = document.createElement('td');
+                    actionTd.textContent = item.action || '';
+                    actionTd.style.border = '1px solid #ddd';
+                    actionTd.style.padding = '8px';
+                    tr.appendChild(actionTd);
+
+                    // Type
+                    const typeTd = document.createElement('td');
+                    typeTd.textContent = item.type || '';
+                    typeTd.style.border = '1px solid #ddd';
+                    typeTd.style.padding = '8px';
+                    tr.appendChild(typeTd);
+
+                    // Item ID
+                    const itemIdTd = document.createElement('td');
+                    itemIdTd.textContent = item.itemId || '';
+                    itemIdTd.style.border = '1px solid #ddd';
+                    itemIdTd.style.padding = '8px';
+                    tr.appendChild(itemIdTd);
+
+                    // Reason
+                    const reasonTd = document.createElement('td');
+                    reasonTd.textContent = item.reason || '';
+                    reasonTd.style.border = '1px solid #ddd';
+                    reasonTd.style.padding = '8px';
+                    tr.appendChild(reasonTd);
+
+                // Actions
+                const actionsTd = document.createElement('td');
+                actionsTd.style.border = '1px solid #ddd';
+                actionsTd.style.padding = '8px';
+
+                if (item.action === 'delete') {
+                    const restoreBtn = document.createElement('button');
+                    restoreBtn.textContent = 'Restore';
+                    restoreBtn.addEventListener('click', () => restoreItem(item));
+                    actionsTd.appendChild(restoreBtn);
+                }
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'Permanently Delete';
+                deleteBtn.style.marginLeft = '5px';
+                deleteBtn.style.backgroundColor = '#f44336';
+                deleteBtn.style.color = 'white';
+                deleteBtn.addEventListener('click', () => permanentlyDeleteHistory(item));
+                actionsTd.appendChild(deleteBtn);
+
+                tr.appendChild(actionsTd);
+                    table.appendChild(tr);
+                });
+
+                dataTableContainer.appendChild(table);
+
+                dataTableContainer.style.display = 'block';
+            }
+
+            renderHistoryTable(filteredData);
+        }
+
+        function fetchHistoryByType(type, employeeId, date) {
+            fetch(`/api/history?employeeId=${employeeId}&type=${type}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        displayHistoryTableByType(type, data);
+                    } else {
+                        alert(`No ${type} history found.`);
+                    }
+                })
+                .catch(error => {
+                    console.error(`Error fetching ${type} history:`, error);
+                    alert(`Error fetching ${type} history.`);
+                });
+        }
+
+        function getFieldsForType(type) {
+            switch (type) {
+                case 'extra': return ['timestamp', 'itemName', 'billNumber', 'extraAmount', 'modeOfPay'];
+                case 'delivery': return ['timestamp', 'billNumber', 'amount', 'modeOfPay'];
+                case 'bill_paid': return ['timestamp', 'vendorSupplier', 'amountPaid'];
+                case 'issue': return ['timestamp', 'billNumber', 'issueDescription'];
+                case 'retail_credit': return ['timestamp', 'phoneNumber', 'amount', 'modeOfPay'];
+                default: return [];
+            }
+        }
+
+        function displayHistoryTable(data) {
+            const dataTableContainer = document.getElementById('data-table');
+            dataTableContainer.innerHTML = ''; // Clear previous table
+
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = 'Close';
+            closeBtn.addEventListener('click', () => {
+                dataTableContainer.style.display = 'none';
+            });
+            dataTableContainer.appendChild(closeBtn);
+
+            const tableTitle = document.createElement('h3');
+            tableTitle.textContent = 'History';
+            dataTableContainer.appendChild(tableTitle);
+
+            const table = document.createElement('table');
+            table.style.width = '100%';
+            table.style.borderCollapse = 'collapse';
+
+            // Collect all unique data keys
+            const allDataKeys = new Set();
+            data.forEach(item => {
+                let itemData;
+                if (item.action === 'delete') {
+                    itemData = item.originalData || item.originaldata || {};
+                } else if (item.action === 'edit') {
+                    itemData = item.modifiedData || item.modifieddata || {};
+                } else {
+                    itemData = item;
+                }
+                Object.keys(itemData).forEach(key => {
+                    if (key !== 'id' && key !== 'type' && key !== 'timestamp') {
+                        allDataKeys.add(key);
+                    }
+                });
+            });
+
+            const headers = ['Timestamp', 'Action', 'Data Type', 'Item ID', 'Reason', ...Array.from(allDataKeys), 'Actions'];
+            const headerRow = document.createElement('tr');
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                th.style.border = '1px solid #ddd';
+                th.style.padding = '8px';
+                th.style.backgroundColor = '#f2f2f2';
+                headerRow.appendChild(th);
+            });
+            table.appendChild(headerRow);
+
+            data.forEach(item => {
+                const tr = document.createElement('tr');
+
+                // Timestamp
+                const timestampTd = document.createElement('td');
+                let timestampValue = item.timestamp || '';
+                if (timestampValue) {
+                    const date = new Date(timestampValue);
+                    timestampValue = date.toLocaleString('en-US', { hour12: true });
+                }
+                timestampTd.textContent = timestampValue;
+                timestampTd.style.border = '1px solid #ddd';
+                timestampTd.style.padding = '8px';
+                tr.appendChild(timestampTd);
+
+                // Action
+                const actionTd = document.createElement('td');
+                actionTd.textContent = item.action || '';
+                actionTd.style.border = '1px solid #ddd';
+                actionTd.style.padding = '8px';
+                tr.appendChild(actionTd);
+
+                // Type
+                const typeTd = document.createElement('td');
+                typeTd.textContent = item.type || '';
+                typeTd.style.border = '1px solid #ddd';
+                typeTd.style.padding = '8px';
+                tr.appendChild(typeTd);
+
+                // Item ID
+                const itemIdTd = document.createElement('td');
+                itemIdTd.textContent = item.itemid || '';
+                itemIdTd.style.border = '1px solid #ddd';
+                itemIdTd.style.padding = '8px';
+                tr.appendChild(itemIdTd);
+
+                // Reason
+                const reasonTd = document.createElement('td');
+                reasonTd.textContent = item.reason || '';
+                reasonTd.style.border = '1px solid #ddd';
+                reasonTd.style.padding = '8px';
+                tr.appendChild(reasonTd);
+
+                // Data fields
+                let itemData;
+                if (item.action === 'delete') {
+                    itemData = item.originalData || item.originaldata || {};
+                } else if (item.action === 'edit') {
+                    itemData = item.modifiedData || item.modifieddata || {};
+                } else {
+                    itemData = item;
+                }
+                Array.from(allDataKeys).forEach(key => {
+                    const td = document.createElement('td');
+                    let value = itemData[key] || '';
+                    if (key === 'timestamp' && value) {
+                        const date = new Date(value);
+                        value = date.toLocaleString('en-US', { hour12: true });
+                    }
+                    td.textContent = value;
+                    td.style.border = '1px solid #ddd';
+                    td.style.padding = '8px';
+                    tr.appendChild(td);
+                });
+
+                // Actions
+                const actionsTd = document.createElement('td');
+                actionsTd.style.border = '1px solid #ddd';
+                actionsTd.style.padding = '8px';
+
+                if (item.action === 'edit') {
+                    const viewBtn = document.createElement('button');
+                    viewBtn.textContent = 'View Changes';
+                    viewBtn.addEventListener('click', () => showEditComparison(item));
+                    actionsTd.appendChild(viewBtn);
+                } else if (item.action === 'delete') {
+                    const restoreBtn = document.createElement('button');
+                    restoreBtn.textContent = 'Restore';
+                    restoreBtn.addEventListener('click', () => restoreItem(item));
+                    actionsTd.appendChild(restoreBtn);
+                }
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'Permanently Delete';
+                deleteBtn.style.marginLeft = '5px';
+                deleteBtn.style.backgroundColor = '#f44336';
+                deleteBtn.style.color = 'white';
+                deleteBtn.addEventListener('click', () => permanentlyDeleteHistory(item));
+                actionsTd.appendChild(deleteBtn);
+
+                tr.appendChild(actionsTd);
+                table.appendChild(tr);
+            });
+
+            dataTableContainer.appendChild(table);
+
+            dataTableContainer.style.display = 'block';
+        }
+
+        function displayHistoryTableByType(type, data) {
+            const dataTableContainer = document.getElementById('data-table');
+            dataTableContainer.innerHTML = ''; // Clear previous table
+
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = 'Close';
+            closeBtn.addEventListener('click', () => {
+                dataTableContainer.style.display = 'none';
+            });
+            dataTableContainer.appendChild(closeBtn);
+
+            const tableTitle = document.createElement('h3');
+            tableTitle.textContent = `${type.replace('_', ' ')} History`;
+            dataTableContainer.appendChild(tableTitle);
+
+            const table = document.createElement('table');
+            table.style.width = '100%';
+            table.style.borderCollapse = 'collapse';
+
+            const fields = getFieldsForType(type);
+            // Specific column orders per type, with an Action Details column summarizing changes
+            let headers;
+            if (type === 'extra') {
+                headers = ['Timestamp', 'Item Name', 'Bill Number', 'Extra Amount', 'Mode of Pay', 'Action Details', 'Reason', 'Actions'];
+            } else if (type === 'delivery') {
+                headers = ['Timestamp', 'Bill Number', 'Amount', 'Extra Amount', 'Total Amount', 'Mode of Pay', 'Action Details', 'Reason', 'Actions'];
+            } else if (type === 'bill_paid') {
+                headers = ['Timestamp', 'Vendor/Supplier', 'Amount Paid', 'Action Details', 'Reason', 'Actions'];
+            } else if (type === 'issue') {
+                headers = ['Timestamp', 'Bill Number', 'Issue Description', 'Action Details', 'Reason', 'Actions'];
+            } else if (type === 'retail_credit') {
+                headers = ['Timestamp', 'Phone Number', 'Amount', 'Mode of Pay', 'Action Details', 'Reason', 'Actions'];
+            } else {
+                headers = ['Timestamp', 'Action', 'Data Type', 'Item ID', 'Reason', ...fields.slice(1), 'Actions']; // Exclude timestamp from fields
+            }
+            const headerRow = document.createElement('tr');
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                th.style.border = '1px solid #ddd';
+                th.style.padding = '8px';
+                th.style.backgroundColor = '#f2f2f2';
+                headerRow.appendChild(th);
+            });
+            table.appendChild(headerRow);
+
+            data.forEach(item => {
+                const tr = document.createElement('tr');
+
+                // Timestamp (first column)
+                const timestampTd = document.createElement('td');
+                let timestampValue = item.timestamp || '';
+                if (timestampValue) {
+                    const date = new Date(timestampValue);
+                    timestampValue = date.toLocaleString('en-US', { hour12: true });
+                }
+                timestampTd.textContent = timestampValue;
+                timestampTd.style.border = '1px solid #ddd';
+                timestampTd.style.padding = '8px';
+                tr.appendChild(timestampTd);
+
+                if (type === 'extra') {
+                    // For extra type show itemName, billNumber, extraAmount, modeOfPay, action details, reason
+                    const itemNameTd = document.createElement('td');
+                    const billNumTd = document.createElement('td');
+                    const extraAmtTd = document.createElement('td');
+                    const modeTd = document.createElement('td');
+
+                    // Determine source of data depending on action
+                    let sourceData = {};
+                    if (item.action === 'delete') sourceData = item.originalData || item.originaldata || {};
+                    else if (item.action === 'edit') sourceData = item.modifiedData || item.modifieddata || {};
+                    else sourceData = item;
+
+                    itemNameTd.textContent = sourceData.itemName || '';
+                    billNumTd.textContent = sourceData.billNumber || '';
+                    extraAmtTd.textContent = sourceData.extraAmount || '';
+                    modeTd.textContent = sourceData.modeOfPay || '';
+
+                    [itemNameTd, billNumTd, extraAmtTd, modeTd].forEach(td => {
+                        td.style.border = '1px solid #ddd';
+                        td.style.padding = '8px';
+                        tr.appendChild(td);
+                    });
+
+                    // Action Details: human-readable changes for edits
+                    const actionDetailsTd = document.createElement('td');
+                    actionDetailsTd.style.border = '1px solid #ddd';
+                    actionDetailsTd.style.padding = '8px';
+                    let details = '';
+                    if (item.action === 'edit') {
+                        const orig = item.originalData || item.originaldata || {};
+                        const mod = item.modifiedData || item.modifieddata || {};
+                        const watchedKeys = ['itemName', 'billNumber', 'extraAmount', 'modeOfPay'];
+                        const parts = [];
+                        watchedKeys.forEach(k => {
+                            const o = (orig[k] !== undefined && orig[k] !== null) ? String(orig[k]) : '';
+                            const m = (mod[k] !== undefined && mod[k] !== null) ? String(mod[k]) : '';
+                            if (o !== m) {
+                                parts.push(`${k} changed from "${o}" to "${m}"`);
+                            }
+                        });
+                        details = parts.join('; ');
+                        if (!details) details = 'No visible changes';
+                    } else if (item.action === 'delete') {
+                        details = 'Record deleted';
+                    } else if (item.action === 'create' || item.action === 'add') {
+                        details = 'Record created';
+                    } else {
+                        details = item.action || '';
+                    }
+                    actionDetailsTd.textContent = details;
+                    tr.appendChild(actionDetailsTd);
+
+                    // Reason
+                    const reasonTd = document.createElement('td');
+                    reasonTd.textContent = item.reason || '';
+                    reasonTd.style.border = '1px solid #ddd';
+                    reasonTd.style.padding = '8px';
+                    tr.appendChild(reasonTd);
+
+                } else if (type === 'delivery') {
+                    // For delivery show billNumber, amount, extraAmount, totalAmount, modeOfPay
+                    const billNumTd = document.createElement('td');
+                    const amountTd = document.createElement('td');
+                    const extraAmtTd = document.createElement('td');
+                    const totalAmtTd = document.createElement('td');
+                    const modeTd = document.createElement('td');
+
+                    let sourceData = {};
+                    if (item.action === 'delete') sourceData = item.originalData || item.originaldata || {};
+                    else if (item.action === 'edit') sourceData = item.modifiedData || item.modifieddata || {};
+                    else sourceData = item;
+
+                    billNumTd.textContent = sourceData.billNumber || '';
+                    amountTd.textContent = sourceData.amount || '';
+                    extraAmtTd.textContent = sourceData.extraAmount || '';
+                    totalAmtTd.textContent = sourceData.totalAmount || '';
+                    modeTd.textContent = sourceData.modeOfPay || '';
+
+                    [billNumTd, amountTd, extraAmtTd, totalAmtTd, modeTd].forEach(td => {
+                        td.style.border = '1px solid #ddd';
+                        td.style.padding = '8px';
+                        tr.appendChild(td);
+                    });
+
+                    // Action Details for delivery
+                    const actionDetailsTd = document.createElement('td');
+                    actionDetailsTd.style.border = '1px solid #ddd';
+                    actionDetailsTd.style.padding = '8px';
+                    let details = '';
+                    if (item.action === 'edit') {
+                        const orig = item.originalData || item.originaldata || {};
+                        const mod = item.modifiedData || item.modifieddata || {};
+                        const watchedKeys = ['billNumber', 'amount', 'extraAmount', 'totalAmount', 'modeOfPay'];
+                        const parts = [];
+                        watchedKeys.forEach(k => {
+                            const o = (orig[k] !== undefined && orig[k] !== null) ? String(orig[k]) : '';
+                            const m = (mod[k] !== undefined && mod[k] !== null) ? String(mod[k]) : '';
+                            if (o !== m) parts.push(`${k} changed from "${o}" to "${m}"`);
+                        });
+                        details = parts.join('; ');
+                        if (!details) details = 'No visible changes';
+                    } else if (item.action === 'delete') {
+                        details = 'Record deleted';
+                    } else if (item.action === 'create' || item.action === 'add') {
+                        details = 'Record created';
+                    } else {
+                        details = item.action || '';
+                    }
+                    actionDetailsTd.textContent = details;
+                    tr.appendChild(actionDetailsTd);
+
+                    // Reason
+                    const reasonTd = document.createElement('td');
+                    reasonTd.textContent = item.reason || '';
+                    reasonTd.style.border = '1px solid #ddd';
+                    reasonTd.style.padding = '8px';
+                    tr.appendChild(reasonTd);
+
+                } else if (type === 'bill_paid') {
+                    const vendorTd = document.createElement('td');
+                    const amtTd = document.createElement('td');
+                    let sourceData = {};
+                    if (item.action === 'delete') sourceData = item.originalData || item.originaldata || {};
+                    else if (item.action === 'edit') sourceData = item.modifiedData || item.modifieddata || {};
+                    else sourceData = item;
+                    vendorTd.textContent = sourceData.vendorSupplier || '';
+                    amtTd.textContent = sourceData.amountPaid || '';
+                    [vendorTd, amtTd].forEach(td => { td.style.border = '1px solid #ddd'; td.style.padding = '8px'; tr.appendChild(td); });
+
+                    const actionDetailsTd = document.createElement('td');
+                    actionDetailsTd.style.border = '1px solid #ddd'; actionDetailsTd.style.padding = '8px';
+                    if (item.action === 'edit') {
+                        const orig = item.originalData || item.originaldata || {};
+                        const mod = item.modifiedData || item.modifieddata || {};
+                        const parts = [];
+                        if ((orig.amountPaid||'') !== (mod.amountPaid||'')) parts.push(`amountPaid changed from "${orig.amountPaid||''}" to "${mod.amountPaid||''}"`);
+                        actionDetailsTd.textContent = parts.join('; ') || 'No visible changes';
+                    } else {
+                        actionDetailsTd.textContent = item.action === 'delete' ? 'Record deleted' : (item.action || '');
+                    }
+                    tr.appendChild(actionDetailsTd);
+
+                    const reasonTd = document.createElement('td'); reasonTd.textContent = item.reason || ''; reasonTd.style.border = '1px solid #ddd'; reasonTd.style.padding = '8px'; tr.appendChild(reasonTd);
+
+                } else if (type === 'issue') {
+                    const billTd = document.createElement('td');
+                    const descTd = document.createElement('td');
+                    let sourceData = {};
+                    if (item.action === 'delete') sourceData = item.originalData || item.originaldata || {};
+                    else if (item.action === 'edit') sourceData = item.modifiedData || item.modifieddata || {};
+                    else sourceData = item;
+                    billTd.textContent = sourceData.billNumber || '';
+                    descTd.textContent = sourceData.issueDescription || '';
+                    [billTd, descTd].forEach(td => { td.style.border = '1px solid #ddd'; td.style.padding = '8px'; tr.appendChild(td); });
+
+                    const actionDetailsTd = document.createElement('td'); actionDetailsTd.style.border = '1px solid #ddd'; actionDetailsTd.style.padding = '8px';
+                    if (item.action === 'edit') {
+                        const orig = item.originalData || item.originaldata || {};
+                        const mod = item.modifiedData || item.modifieddata || {};
+                        const parts = [];
+                        if ((orig.issueDescription||'') !== (mod.issueDescription||'')) parts.push(`issueDescription changed from "${orig.issueDescription||''}" to "${mod.issueDescription||''}"`);
+                        actionDetailsTd.textContent = parts.join('; ') || 'No visible changes';
+                    } else { actionDetailsTd.textContent = item.action === 'delete' ? 'Record deleted' : (item.action || ''); }
+                    tr.appendChild(actionDetailsTd);
+
+                    const reasonTd = document.createElement('td'); reasonTd.textContent = item.reason || ''; reasonTd.style.border = '1px solid #ddd'; reasonTd.style.padding = '8px'; tr.appendChild(reasonTd);
+
+                } else if (type === 'retail_credit') {
+                    const phoneTd = document.createElement('td');
+                    const amtTd = document.createElement('td');
+                    const modeTd = document.createElement('td');
+                    let sourceData = {};
+                    if (item.action === 'delete') sourceData = item.originalData || item.originaldata || {};
+                    else if (item.action === 'edit') sourceData = item.modifiedData || item.modifieddata || {};
+                    else sourceData = item;
+                    phoneTd.textContent = sourceData.phoneNumber || '';
+                    amtTd.textContent = sourceData.amount || '';
+                    modeTd.textContent = sourceData.modeOfPay || '';
+                    [phoneTd, amtTd, modeTd].forEach(td => { td.style.border = '1px solid #ddd'; td.style.padding = '8px'; tr.appendChild(td); });
+
+                    const actionDetailsTd = document.createElement('td'); actionDetailsTd.style.border = '1px solid #ddd'; actionDetailsTd.style.padding = '8px';
+                    if (item.action === 'edit') {
+                        const orig = item.originalData || item.originaldata || {};
+                        const mod = item.modifiedData || item.modifieddata || {};
+                        const parts = [];
+                        ['phoneNumber','amount','modeOfPay'].forEach(k => {
+                            if ((orig[k]||'') !== (mod[k]||'')) parts.push(`${k} changed from "${orig[k]||''}" to "${mod[k]||''}"`);
+                        });
+                        actionDetailsTd.textContent = parts.join('; ') || 'No visible changes';
+                    } else { actionDetailsTd.textContent = item.action === 'delete' ? 'Record deleted' : (item.action || ''); }
+                    tr.appendChild(actionDetailsTd);
+
+                    const reasonTd = document.createElement('td'); reasonTd.textContent = item.reason || ''; reasonTd.style.border = '1px solid #ddd'; reasonTd.style.padding = '8px'; tr.appendChild(reasonTd);
+
+                } else {
+                    // Action
+                    const actionTd = document.createElement('td');
+                    actionTd.textContent = item.action || '';
+                    actionTd.style.border = '1px solid #ddd';
+                    actionTd.style.padding = '8px';
+                    tr.appendChild(actionTd);
+
+                    // Type
+                    const typeTd = document.createElement('td');
+                    typeTd.textContent = item.type || '';
+                    typeTd.style.border = '1px solid #ddd';
+                    typeTd.style.padding = '8px';
+                    tr.appendChild(typeTd);
+
+                    // Item ID
+                    const itemIdTd = document.createElement('td');
+                    itemIdTd.textContent = item.itemid || '';
+                    itemIdTd.style.border = '1px solid #ddd';
+                    itemIdTd.style.padding = '8px';
+                    tr.appendChild(itemIdTd);
+
+                    // Reason
+                    const reasonTd = document.createElement('td');
+                    reasonTd.textContent = item.reason || '';
+                    reasonTd.style.border = '1px solid #ddd';
+                    reasonTd.style.padding = '8px';
+                    tr.appendChild(reasonTd);
+
+                    // Data fields based on type
+                    let itemData;
+                    if (item.action === 'delete') {
+                        itemData = item.originalData || item.originaldata || {};
+                    } else if (item.action === 'edit') {
+                        itemData = item.modifiedData || item.modifieddata || {};
+                    } else {
+                        itemData = item;
+                    }
+                    fields.slice(1).forEach(key => { // Skip timestamp
+                        const td = document.createElement('td');
+                        let value = itemData[key] || '';
+                        if (key === 'timestamp' && value) {
+                            const date = new Date(value);
+                            value = date.toLocaleString('en-US', { hour12: true });
+                        }
+                        td.textContent = value;
+                        td.style.border = '1px solid #ddd';
+                        td.style.padding = '8px';
+                        tr.appendChild(td);
+                    });
+                }
+
+                // Actions
+                const actionsTd = document.createElement('td');
+                actionsTd.style.border = '1px solid #ddd';
+                actionsTd.style.padding = '8px';
+
+                if (item.action === 'edit') {
+                    const viewBtn = document.createElement('button');
+                    viewBtn.textContent = 'View Changes';
+                    viewBtn.addEventListener('click', () => showEditComparison(item));
+                    actionsTd.appendChild(viewBtn);
+                } else if (item.action === 'delete') {
+                    const restoreBtn = document.createElement('button');
+                    restoreBtn.textContent = 'Restore';
+                    restoreBtn.addEventListener('click', () => restoreItem(item));
+                    actionsTd.appendChild(restoreBtn);
+                }
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'Permanently Delete';
+                deleteBtn.style.marginLeft = '5px';
+                deleteBtn.style.backgroundColor = '#f44336';
+                deleteBtn.style.color = 'white';
+                deleteBtn.addEventListener('click', () => permanentlyDeleteHistory(item));
+                actionsTd.appendChild(deleteBtn);
+
+                tr.appendChild(actionsTd);
+                table.appendChild(tr);
+            });
+
+            dataTableContainer.appendChild(table);
+
+            dataTableContainer.style.display = 'block';
+        }
+
+        function restoreItem(item) {
+            if (confirm('Are you sure you want to restore this item to its original state?')) {
+                fetch(`/api/restore/${item.id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ originalData: item.originalData || item.originaldata })
+                })
+                .then(response => {
+                    if (response.ok) {
+                        alert('Item restored successfully.');
+                        // Refresh the history view
+                        fetchHistory(selectedEmployeeId, selectedDate);
+                    } else {
+                        alert('Error restoring item.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error restoring item:', error);
+                    alert('Error restoring item.');
+                });
+            }
+        }
+
+        function showEditComparison(item) {
+            const modal = document.getElementById('edit-comparison-modal');
+            const content = document.getElementById('comparison-content');
+            content.innerHTML = '';
+
+            const originalData = item.originalData || item.originaldata || {};
+            const modifiedData = item.modifiedData || item.modifieddata || {};
+
+            const allKeys = new Set([...Object.keys(originalData), ...Object.keys(modifiedData)]);
+            allKeys.delete('id');
+            allKeys.delete('timestamp');
+
+            const table = document.createElement('table');
+            table.style.width = '100%';
+            table.style.borderCollapse = 'collapse';
+
+            const headers = ['Field', 'Original Value', 'Modified Value'];
+            const headerRow = document.createElement('tr');
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                th.style.border = '1px solid #ddd';
+                th.style.padding = '8px';
+                th.style.backgroundColor = '#f2f2f2';
+                headerRow.appendChild(th);
+            });
+            table.appendChild(headerRow);
+
+            Array.from(allKeys).forEach(key => {
+                const tr = document.createElement('tr');
+
+                const fieldTd = document.createElement('td');
+                fieldTd.textContent = key;
+                fieldTd.style.border = '1px solid #ddd';
+                fieldTd.style.padding = '8px';
+                tr.appendChild(fieldTd);
+
+                const originalTd = document.createElement('td');
+                let originalValue = originalData[key] || '';
+                if (key === 'timestamp' && originalValue) {
+                    const date = new Date(originalValue);
+                    originalValue = date.toLocaleString('en-US', { hour12: true });
+                }
+                originalTd.textContent = originalValue;
+                originalTd.style.border = '1px solid #ddd';
+                originalTd.style.padding = '8px';
+                originalTd.style.backgroundColor = '#ffe6e6';
+                tr.appendChild(originalTd);
+
+                const modifiedTd = document.createElement('td');
+                let modifiedValue = modifiedData[key] || '';
+                if (key === 'timestamp' && modifiedValue) {
+                    const date = new Date(modifiedValue);
+                    modifiedValue = date.toLocaleString('en-US', { hour12: true });
+                }
+                modifiedTd.textContent = modifiedValue;
+                modifiedTd.style.border = '1px solid #ddd';
+                modifiedTd.style.padding = '8px';
+                modifiedTd.style.backgroundColor = '#e6ffe6';
+                tr.appendChild(modifiedTd);
+
+                table.appendChild(tr);
+            });
+
+            content.appendChild(table);
+
+            // Add revert button
+            const revertBtn = document.createElement('button');
+            revertBtn.textContent = 'Revert to Original';
+            revertBtn.style.marginTop = '10px';
+            revertBtn.addEventListener('click', () => revertEdit(item));
+            content.appendChild(revertBtn);
+
+            modal.style.display = 'flex';
+        }
+
+        function closeEditComparisonModal() {
+            document.getElementById('edit-comparison-modal').style.display = 'none';
+        }
+
+        function revertEdit(item) {
+            if (confirm('Are you sure you want to revert this edit to the original values?')) {
+                fetch(`/api/revert-edit/${item.id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ originalData: item.originaldata })
+                })
+                .then(response => {
+                    if (response.ok) {
+                        alert('Edit reverted successfully.');
+                        closeEditComparisonModal();
+                        // Refresh the history view
+                        fetchHistory(selectedEmployeeId, selectedDate);
+                    } else {
+                        alert('Error reverting edit.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error reverting edit:', error);
+                    alert('Error reverting edit.');
+                });
+            }
+        }
+
+        function permanentlyDeleteHistory(item) {
+            if (confirm('Are you sure you want to permanently delete this history entry? This action cannot be undone.')) {
+                fetch(`/api/permanently-delete-history/${item.id}`, {
+                    method: 'DELETE'
+                })
+                .then(response => {
+                    if (response.ok) {
+                        alert('History entry deleted permanently.');
+                        // Refresh the history view
+                        fetchHistory(selectedEmployeeId, selectedDate);
+                    } else {
+                        alert('Error deleting history entry.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting history entry:', error);
+                    alert('Error deleting history entry.');
+                });
+            }
+        }
+
+        function showDataDetails(item) {
+            const modal = document.getElementById('data-details-modal');
+            const content = document.getElementById('data-details-content');
+            content.innerHTML = '';
+
+            let dataToShow;
+            if (item.action === 'delete') {
+                dataToShow = item.originaldata || {};
+            } else if (item.action === 'edit') {
+                dataToShow = item.modifieddata || {};
+            } else {
+                dataToShow = item;
+            }
+
+            const allKeys = Object.keys(dataToShow).filter(key => key !== 'id' && key !== 'type' && key !== 'timestamp');
+
+            const table = document.createElement('table');
+            table.style.width = '100%';
+            table.style.borderCollapse = 'collapse';
+
+            const headers = ['Field', 'Value'];
+            const headerRow = document.createElement('tr');
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                th.style.border = '1px solid #ddd';
+                th.style.padding = '8px';
+                th.style.backgroundColor = '#f2f2f2';
+                headerRow.appendChild(th);
+            });
+            table.appendChild(headerRow);
+
+            allKeys.forEach(key => {
+                const tr = document.createElement('tr');
+
+                const fieldTd = document.createElement('td');
+                fieldTd.textContent = key;
+                fieldTd.style.border = '1px solid #ddd';
+                fieldTd.style.padding = '8px';
+                tr.appendChild(fieldTd);
+
+                const valueTd = document.createElement('td');
+                let value = dataToShow[key] || '';
+                if (key === 'timestamp' && value) {
+                    const date = new Date(value);
+                    value = date.toLocaleString('en-US', { hour12: true });
+                }
+                valueTd.textContent = value;
+                valueTd.style.border = '1px solid #ddd';
+                valueTd.style.padding = '8px';
+                tr.appendChild(valueTd);
+
+                table.appendChild(tr);
+            });
+
+            content.appendChild(table);
+
+            modal.style.display = 'flex';
+        }
+
+        function exportToExcel(data) {
+            // Get all unique keys from the data
+            const allKeys = new Set();
+            data.forEach(item => {
+                Object.keys(item).forEach(key => {
+                    if (key !== 'id') { // Exclude id field
+                        allKeys.add(key);
+                    }
+                });
+            });
+
+            // Create a worksheet with custom headers
+            const headers = Array.from(allKeys);
+            const sheetData = [headers];
+
+            // Add data rows
+            data.forEach(item => {
+                const row = headers.map(header => item[header] || '');
+                sheetData.push(row);
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(sheetData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Report');
+            XLSX.writeFile(wb, 'report.xlsx');
+        }
+        fetch('/api/employees')
+            .then(response => response.json())
+            .then(employees => {
+                const employeeListDiv = document.getElementById('employee-list');
+                if (employees.length === 0) {
+                    employeeListDiv.innerHTML = '<p>No employees found.</p>';
+                    return;
+                }
+                const table = document.createElement('table');
+                table.style.width = '100%';
+                table.style.borderCollapse = 'collapse';
+                table.style.marginTop = '20px';
+                const headers = ['Name', 'Actions'];
+                const headerRow = document.createElement('tr');
+                headers.forEach(header => {
+                    const th = document.createElement('th');
+                        th.textContent = header;
+                        th.style.border = '1px solid #ddd';
+                        th.style.padding = '8px';
+                        th.style.backgroundColor = '#f2f2f2';
+                        headerRow.appendChild(th);
+                    });
+                table.appendChild(headerRow);
+                employees.forEach(employee => {
+                    const tr = document.createElement('tr');
+                    const nameTd = document.createElement('td');
+                    nameTd.textContent = employee.name;
+                    nameTd.style.border = '1px solid #ddd';
+                    nameTd.style.padding = '8px';
+                    tr.appendChild(nameTd);
+                    const actionsTd = document.createElement('td');
+                    actionsTd.style.border = '1px solid #ddd';
+                    actionsTd.style.padding = '8px';
+                    const viewAllBtn = document.createElement('button');
+                    viewAllBtn.textContent = 'View All Data';
+                    viewAllBtn.addEventListener('click', () => fetchReport(employee.id, null));
+                    actionsTd.appendChild(viewAllBtn);
+                    const viewHistoryBtn = document.createElement('button');
+                    viewHistoryBtn.textContent = 'View History';
+                    viewHistoryBtn.style.marginLeft = '10px';
+                    viewHistoryBtn.addEventListener('click', () => fetchHistory(employee.id, null));
+                    actionsTd.appendChild(viewHistoryBtn);
+                    tr.appendChild(actionsTd);
+                    table.appendChild(tr);
+                });
+                employeeListDiv.appendChild(table);
+            })
+            .catch(error => {
+                console.error('Error fetching employees:', error);
+                alert('Error fetching employees.');
+            });
+
+        // New modal form event handlers for edit and delete actions
+
+        // Open edit modal with pre-filled data
+        function openEditModal(item) {
+            selectedEmployeeId = item.employeeId || selectedEmployeeId;
+            document.getElementById('edit-id').value = item.id || item._id;
+            // Convert ISO string to local datetime for input value
+            function toLocalDateTime(isoString) {
+                if (!isoString) return '';
+                const d = new Date(isoString);
+                if (isNaN(d.getTime())) return '';
+                const off = d.getTimezoneOffset();
+                const localDate = new Date(d.getTime() - off * 60 * 1000);
+                return localDate.toISOString().slice(0,16);
+            }
+            document.getElementById('edit-shift-start').value = toLocalDateTime(item.shiftStartTime || '');
+            document.getElementById('edit-shift-end').value = toLocalDateTime(item.shiftEndTime || '');
+            const counterSelect = document.getElementById('edit-counter');
+            counterSelect.value = item.counter || item.counterId || item.counter_id || 'counter 1';
+            const pineLabValueInput = document.getElementById('edit-pineLabValue');
+            pineLabValueInput.value = item.pineLabValue || item.pine_lab_value || '';
+            document.getElementById('edit-reason').value = '';
+            document.getElementById('edit-modal').style.display = 'block';
+
+            // Enable or disable pineLabValue input based on counter selection
+            function updatePineLabInput() {
+                if (counterSelect.value === 'counter 2') {
+                    pineLabValueInput.disabled = true;
+                    pineLabValueInput.value = '';
+                } else {
+                    pineLabValueInput.disabled = false;
+                }
+            }
+
+            // Attach event listener on change (remove previous if any to avoid multiple)
+            counterSelect.removeEventListener('change', updatePineLabInput);
+            counterSelect.addEventListener('change', updatePineLabInput);
+
+            // Initial call to set state correctly on modal open
+            updatePineLabInput();
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').style.display = 'none';
+        }
+
+        function openDeleteModal(item) {
+            selectedEmployeeId = item.employeeId || selectedEmployeeId;
+            document.getElementById('delete-id').value = item.id || item._id;
+            document.getElementById('delete-reason-text').value = '';
+            document.getElementById('delete-reason-modal').style.display = 'block';
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('delete-reason-modal').style.display = 'none';
+        }
+
+        // Override old edit and delete functions to open modals
+        function editCounterData(item) {
+            openEditModal(item);
+        }
+
+        function deleteCounterData(item) {
+            openDeleteModal(item);
+        }
+
+        // Handle submission of edit form
+        document.getElementById('edit-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit-id').value;
+            const employeeId = selectedEmployeeId;
+            const shiftStart = document.getElementById('edit-shift-start').value;
+            const shiftEnd = document.getElementById('edit-shift-end').value;
+            const counter = document.getElementById('edit-counter').value.trim();
+            const pineLabValue = document.getElementById('edit-pineLabValue').value.trim();
+            const editReason = document.getElementById('edit-reason').value.trim();
+
+            if (!editReason) {
+                alert('Please provide a reason for editing.');
+                return;
+            }
+
+            try {
+                const payload = {
+                    shiftStartTimestamp: shiftStart,
+                    shiftEndTimestamp: shiftEnd,
+                    counter,
+                    pineLabValue,
+                    editReason
+                };
+                const response = await fetch(`/api/counter_data/${id}?employeeId=${employeeId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                if (response.ok) {
+                    alert('Record updated successfully.');
+                    closeEditModal();
+                    fetchReport(selectedEmployeeId, selectedDate);
+                } else {
+                    alert('Error updating record.');
+                }
+            } catch (error) {
+                console.error('Error updating record:', error);
+                alert('Error updating record.');
+            }
+        });
+
+        // Handle submission of delete form
+        document.getElementById('delete-reason-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const id = document.getElementById('delete-id').value;
+            const employeeId = selectedEmployeeId;
+            const reason = document.getElementById('delete-reason-text').value.trim();
+
+            if (!reason) {
+                alert('Please provide a reason for deletion.');
+                return;
+            }
+
+            if (!confirm('Are you sure you want to delete this record?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/counter_data/${id}?employeeId=${employeeId}&reason=${encodeURIComponent(reason)}`, {
+                    method: 'DELETE'
+                });
+                if (response.ok) {
+                    alert('Record deleted successfully.');
+                    closeDeleteModal();
+                    fetchReport(selectedEmployeeId, selectedDate);
+                } else {
+                    alert('Error deleting record.');
+                }
+            } catch (error) {
+                console.error('Error deleting record:', error);
+                alert('Error deleting record.');
+            }
+        });
+        </script>
+</body>
+</html>

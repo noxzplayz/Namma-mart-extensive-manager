@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Namma Mart - End Shift Report</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="employee.css" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        header, footer {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            margin-bottom: 10px;
+        }
+        #summary, #todays-report {
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+        .note {
+            font-style: italic;
+            margin-top: 30px;
+            font-weight: bold;
+            color: #555;
+        }
+        .section-title {
+            margin-bottom: 10px;
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #004085;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>NAMMA MART</h1>
+        <h2>End Shift Report</h2>
+    </header>
+
+    <section id="summary">
+        <div class="section-title">Employee Shift Summary</div>
+        <p><strong>Name of Employee:</strong> <span id="employee-name"></span></p>
+        <p><strong>Shift Date:</strong> <span id="shift-date"></span></p>
+        <p><strong>Shift Start Time:</strong> <span id="shift-start"></span></p>
+        <p><strong>Shift End Time:</strong> <span id="shift-end"></span></p>
+        <p><strong>Counter Number:</strong> <span id="counter-number"></span></p>
+        <p><strong>Pine Lab Value:</strong> <span id="pine-lab-value"></span></p>
+    </section>
+
+    <section id="data-tables">
+        <div class="section-title">Copies of Data</div>
+        <div id="extra-data">
+            <h3>Extra Data Table</h3>
+            <table id="table-extra"></table>
+        </div>
+        <div id="delivery-data">
+            <h3>Delivery Table</h3>
+            <table id="table-delivery"></table>
+        </div>
+        <div id="bill-paid-data">
+            <h3>Bill Paid Table</h3>
+            <table id="table-bill-paid"></table>
+        </div>
+        <div id="issue-data">
+            <h3>Issue Table</h3>
+            <table id="table-issue"></table>
+        </div>
+        <div id="retail-credit-data">
+            <h3>Retail Credit Table</h3>
+            <table id="table-retail-credit"></table>
+        </div>
+    </section>
+
+    <section id="todays-report">
+        <div class="section-title">---------Today's Report----------</div>
+        <p>UPI Pinelab: <span id="total-upi-pinelab">0</span></p>
+        <p>Card Pinelab: <span id="total-card-pinelab">0</span></p>
+        <p>UPI Paytm: <span id="total-upi-paytm">0</span></p>
+        <p>Card Paytm: <span id="total-card-paytm">0</span></p>
+        <p>Cash: <span id="total-cash">0</span></p>
+        <p>Retail Credit: <span id="total-retail-credit">0</span></p>
+    </section>
+
+    <p class="note">This data is present with Admin and copy of analysis is sent to your email check your inbox</p>
+    <button id="close-window-btn" style="margin-bottom: 20px; padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">Close</button>
+
+    <footer>
+        <p>Made with ❤️ By <a href="https://www.instagram.com/yochxn.__/" target="_blank">Yochan</a></p>
+    </footer>
+
+    <script>
+        function formatDateTime(timestamp) {
+            if (!timestamp) return '';
+            const dt = new Date(timestamp);
+            if (isNaN(dt.getTime())) return '';
+            return dt.toLocaleString('en-US', { hour12: true });
+        }
+
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+
+        async function fetchEmployeeName(employeeId) {
+            const response = await fetch(`/api/employees/${employeeId}`);
+            if (response.ok) {
+                const employee = await response.json();
+                return employee.name || 'Unknown';
+            }
+            return 'Unknown';
+        }
+
+        async function fetchData(type, employeeId, date) {
+            const response = await fetch(`/api/${type}?employeeId=${employeeId}&date=${date}`);
+            if (response.ok) {
+                return response.json();
+            }
+            return [];
+        }
+
+        function createTable(headers, data, containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            const table = document.createElement('table');
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            const tbody = document.createElement('tbody');
+            data.forEach(item => {
+                const tr = document.createElement('tr');
+                headers.forEach(header => {
+                    const td = document.createElement('td');
+                    let key = header.toLowerCase().replace(/\s+/g, '');
+                    // custom key mapping for known headers
+                    if (header === 'Item Name') key = 'itemName';
+                    if (header === 'Bill Number') key = 'billNumber';
+                    if (header === 'Extra Amount') key = 'extraAmount';
+                    if (header === 'Mode of Pay') key = 'modeOfPay';
+                    if (header === 'Amount') key = 'amount';
+                    if (header === 'Vendor/Supplier') key = 'vendorSupplier';
+                    if (header === 'Amount Paid') key = 'amountPaid';
+                    if (header === 'Issue Description') key = 'issueDescription';
+                    if (header === 'Phone Number') key = 'phoneNumber';
+                    if (header === 'Timestamp') key = 'timestamp';
+                    // display date nicely for timestamp columns
+                    if (key === 'timestamp') {
+                        td.textContent = formatDateTime(item[key]);
+                    } else {
+                        td.textContent = item[key] !== undefined ? item[key] : '';
+                    }
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+            container.appendChild(table);
+        }
+
+        async function fetchTodayReportSummary(employeeId, date) {
+            const response = await fetch(`/api/todays-report-summary?employeeId=${employeeId}&date=${date}`);
+            if (response.ok) {
+                return response.json();
+            }
+            return {
+                upiPinelab: 0,
+                cardPinelab: 0,
+                upiPaytm: 0,
+                cardPaytm: 0,
+                cash: 0,
+                retailCredit: 0
+            };
+        }
+
+        function sumAmountsByMode(data, modeValues) {
+            return data.reduce((acc, item) => {
+                if (modeValues.includes(item.modeOfPay)) {
+                    const amt = parseFloat(item.extraAmount || item.amount || item.amountPaid || item.amount) || 0;
+                    return acc + amt;
+                }
+                return acc;
+            }, 0);
+        }
+
+        async function renderPage() {
+            const employeeId = getQueryParam('employeeId');
+            const date = getQueryParam('date');
+
+            if (!employeeId || !date) {
+                alert('Employee ID or Date missing in URL parameters.');
+                return;
+            }
+
+            document.getElementById('shift-date').textContent = date;
+
+            const employeeName = await fetchEmployeeName(employeeId);
+            document.getElementById('employee-name').textContent = employeeName;
+
+            // Fetch counter data (shift start and end, counter, pine lab) for the date
+            const counterData = await fetchData('counter_data', employeeId, date);
+
+            let shiftStart = '';
+            let shiftEnd = '';
+            let counterNumber = '';
+            let pineLabValue = '';
+
+            if (counterData.length > 0) {
+                // Assuming only one shift per day, take the first record
+                const shift = counterData[0];
+                shiftStart = formatDateTime(shift.shiftStartTime);
+                shiftEnd = formatDateTime(shift.shiftEndTime);
+                counterNumber = shift.counter || '';
+                if (counterNumber.toLowerCase() === 'counter 1' || counterNumber === '1') {
+                    pineLabValue = shift.pineLabValue || shift.pine_lab_value || '';
+                }
+            }
+
+            document.getElementById('shift-start').textContent = shiftStart;
+            document.getElementById('shift-end').textContent = shiftEnd;
+            document.getElementById('counter-number').textContent = counterNumber;
+            document.getElementById('pine-lab-value').textContent = pineLabValue;
+
+            // Fetch and render tables: extra, delivery, bill_paid, issue, retail_credit
+            const extraData = await fetchData('extra', employeeId, date);
+            createTable(['Timestamp', 'Item Name', 'Bill Number', 'Extra Amount', 'Mode of Pay'], extraData, 'table-extra');
+
+            const deliveryData = await fetchData('delivery', employeeId, date);
+            createTable(['Timestamp', 'Bill Number', 'Amount', 'Extra Amount', 'Total Amount', 'Mode of Pay'], deliveryData, 'table-delivery');
+
+            const billPaidData = await fetchData('bill_paid', employeeId, date);
+            createTable(['Timestamp', 'Vendor/Supplier', 'Amount Paid'], billPaidData, 'table-bill-paid');
+
+            const issueData = await fetchData('issue', employeeId, date);
+            createTable(['Timestamp', 'Bill Number', 'Issue Description'], issueData, 'table-issue');
+
+            const retailCreditData = await fetchData('retail_credit', employeeId, date);
+            createTable(['Timestamp', 'Phone Number', 'Amount', 'Mode of Pay'], retailCreditData, 'table-retail-credit');
+
+            // Fetch and display today's report summary totals for payment types from extra data
+            const summary = await fetchTodayReportSummary(employeeId, date);
+
+            document.getElementById('total-upi-pinelab').textContent = summary.upiPinelab.toFixed(2);
+            document.getElementById('total-card-pinelab').textContent = summary.cardPinelab.toFixed(2);
+            document.getElementById('total-upi-paytm').textContent = summary.upiPaytm.toFixed(2);
+            document.getElementById('total-card-paytm').textContent = summary.cardPaytm.toFixed(2);
+            document.getElementById('total-cash').textContent = summary.cash.toFixed(2);
+            document.getElementById('total-retail-credit').textContent = summary.retailCredit.toFixed(2);
+        }
+
+        window.onload = () => {
+            renderPage();
+            document.getElementById('close-window-btn').onclick = () => {
+                window.location.href = '/index.html'; // Redirect to login page
+            };
+        };
+    </script>
+ </body>
+</html>

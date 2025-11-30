@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Namma Mart - Retail Credit</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="employee.css">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <h1>NAMMA MART</h1>
+            <p>Signature Of Quality</p>
+        </div>
+        <div class="manager-info">
+            <h2>EXTENSIVE MANAGER</h2>
+            <p>Designed By Yochan</p>
+        </div>
+    </header>
+    <div class="back-button">
+        <button onclick="window.location.href='employee.html'">Back</button>
+    </div>
+    <main>
+        <div class="employee-container">
+            <form id="retail-credit-form">
+                <div class="input-fields">
+                    <label for="phone-number">Phone Number:</label>
+                    <input type="tel" id="phone-number" name="phone-number" inputmode="numeric" pattern="[1-9][0-9]{9}" title="Enter a 10-digit phone number starting with 1-9" minlength="10" maxlength="10" required><br><br>
+                    <label for="amount">Amount:</label>
+                    <input type="text" id="amount" name="amount" required><br><br>
+                    <label for="mode-of-pay">Mode of Pay:</label>
+                    <select id="mode-of-pay" name="mode-of-pay" required>
+                        <option value="">Select Mode of Pay</option>
+                        <option value="Upi Pinelab">Upi Pinelab</option>
+                        <option value="Card Pinelab">Card Pinelab</option>
+                        <option value="Upi Paytm">Upi Paytm</option>
+                        <option value="Card Paytm">Card Paytm</option>
+                        <option value="Cash">Cash</option>
+                    </select><br><br>
+                    <button type="submit" class="submit-btn">Submit</button>
+                </div>
+            </form>
+        </div>
+    </main>
+    <footer>
+        <p>RETAIL CREDIT PAGE</p>
+    </footer>
+    <script>
+        // Get employee ID from localStorage (assuming it's stored during login)
+        const employeeId = localStorage.getItem('employeeId');
+
+        const phoneInput = document.getElementById('phone-number');
+        phoneInput.addEventListener('input', function() {
+            // Remove non-digit characters
+            let v = this.value.replace(/\D/g, '');
+            // Remove leading zeros
+            while (v.startsWith('0')) {
+                v = v.slice(1);
+            }
+            // Limit to 10 digits
+            if (v.length > 10) v = v.slice(0, 10);
+            this.value = v;
+
+            if (v.length === 10 && /^[1-9]\d{9}$/.test(v)) {
+                this.style.borderColor = 'green';
+            } else {
+                this.style.borderColor = '';
+            }
+        });
+
+        document.getElementById('retail-credit-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            if (!employeeId) {
+                alert('Employee ID not found. Please login again.');
+                return;
+            }
+
+            const formData = new FormData(this);
+            const phone = formData.get('phone-number') || '';
+            // Validate phone: must be exactly 10 digits and not start with 0
+            if (!/^[1-9]\d{9}$/.test(phone)) {
+                alert('Please enter a valid 10-digit phone number without a leading zero.');
+                phoneInput.focus();
+                return;
+            }
+
+            const data = {
+                employeeId: employeeId,
+                phoneNumber: phone,
+                amount: formData.get('amount'),
+                modeOfPay: formData.get('mode-of-pay')
+            };
+
+            fetch('/api/retail_credit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert('Data saved successfully!');
+                    // Reset form
+                    this.reset();
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while saving data.');
+            });
+        });
+    </script>
+</body>
+</html>

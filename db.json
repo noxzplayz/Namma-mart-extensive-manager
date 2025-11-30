@@ -1,0 +1,134 @@
+{
+  "store_closed": false,
+  "employees": [
+    {
+      "name": "yochan",
+      "employee-id": "",
+      "address": "",
+      "blood-group": "",
+      "phone": "",
+      "guardian-name": "",
+      "relationship": "",
+      "guardian-phone": "",
+      "aadhar-number": "",
+      "dob": "",
+      "gender": "",
+      "marital-status": "",
+      "email": "workfornoxzplayz@gmail.com",
+      "bank-name": "",
+      "bank-branch": "",
+      "ifsc-code": "",
+      "account-number": "",
+      "account-holder-name": "",
+      "pan-number": "",
+      "full-time": "",
+      "start-time": "",
+      "end-time": "",
+      "break-time": "",
+      "username": "yochan",
+      "password": "$2a$10$jnmgz0Hw8sBkC9DQZK5W6eAKg58Z32835uLtwBHxHean/PC9pOtKe",
+      "id": "JgbTgRc1V",
+      "shiftEnded": false,
+      "counter_selections": [
+        {
+          "id": "eh9-be-xN",
+          "counter": "Counter 2",
+          "pineLabValue": null,
+          "timestamp": "2025-11-24T14:33:38.795Z"
+        },
+        {
+          "id": "X-8A6HMbx",
+          "counter": "Counter 1",
+          "pineLabValue": "2525",
+          "timestamp": "2025-11-24T14:42:17.530Z"
+        },
+        {
+          "id": "VGuqbNuy7",
+          "counter": "Counter 1",
+          "pineLabValue": "678",
+          "timestamp": "2025-11-24T15:38:27.183Z"
+        },
+        {
+          "id": "HBAIGoVOR",
+          "counter": "Counter 1",
+          "pineLabValue": "56565",
+          "timestamp": "2025-11-25T02:07:34.336Z"
+        },
+        {
+          "id": "m6kHW0Dpo",
+          "counter": "Counter 1",
+          "pineLabValue": "56565",
+          "timestamp": "2025-11-25T02:21:10.599Z"
+        },
+        {
+          "id": "1G6mL0-78",
+          "counter": "Counter 1",
+          "pineLabValue": "2050",
+          "timestamp": "2025-11-29T14:59:00.281Z"
+        },
+        {
+          "id": "oXpyrDAkO",
+          "counter": "Counter 1",
+          "pineLabValue": "141614",
+          "timestamp": "2025-11-30T01:51:38.621Z"
+        },
+        {
+          "id": "MDvhQefyK",
+          "counter": "Counter 1",
+          "pineLabValue": "2515",
+          "shiftStartTime": "2025-11-30T02:16:53.566Z",
+          "shiftEndTime": null,
+          "timestamp": "2025-11-30T02:16:53.566Z"
+        }
+      ],
+      "extra": [
+        {
+          "id": "q8x31KPll",
+          "itemName": "Veg",
+          "billNumber": "167258",
+          "extraAmount": "67",
+          "modeOfPay": "Card Paytm",
+          "timestamp": "2025-11-24T15:38:41.673Z"
+        },
+        {
+          "id": "iL_ZEj_JK",
+          "itemName": "veg",
+          "billNumber": "2346",
+          "extraAmount": "234",
+          "modeOfPay": "Upi Pinelab",
+          "timestamp": "2025-11-25T02:07:54.713Z"
+        },
+        {
+          "id": "sP1TPkagg",
+          "itemName": "qwe",
+          "billNumber": "234",
+          "extraAmount": "2346",
+          "modeOfPay": "Card Pinelab",
+          "timestamp": "2025-11-25T02:08:07.289Z"
+        }
+      ],
+      "delivery": [
+        {
+          "id": "T3oIVfFuW",
+          "billNumber": "qweryu",
+          "amount": "23456io",
+          "extraAmount": 0,
+          "totalAmount": "23456io",
+          "modeOfPay": "Upi Paytm",
+          "timestamp": "2025-11-25T02:08:16.151Z"
+        }
+      ],
+      "retail_credit": [
+        {
+          "id": "020tCSpnH",
+          "phoneNumber": "3456789009",
+          "amount": "2345",
+          "modeOfPay": "Card Paytm",
+          "timestamp": "2025-11-25T02:08:27.619Z"
+        }
+      ],
+      "startShiftTime": "2025-11-30T02:16:41.948Z",
+      "endShiftTime": "2025-11-30T02:00:01.546Z"
+    }
+  ]
+}

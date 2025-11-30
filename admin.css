@@ -1,0 +1,243 @@
+.admin-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+    gap: 20px;
+}
+
+.admin-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    width: 100%;
+    max-width: 600px;
+}
+
+.admin-btn {
+    background-color: #a020f0;
+    color: white;
+    border: none;
+    padding: 20px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 1.2em;
+    font-weight: bold;
+    text-align: center;
+    transition: background-color 0.3s ease;
+    text-transform: uppercase;
+}
+
+.admin-btn:hover {
+    background-color: #8a1bc7;
+}
+
+.end-shift-btn {
+    width: 300px;
+    max-width: 100%;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 500px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+}
+
+.modal-content .form-group {
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.modal-content label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.time-inputs {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.time-inputs input[type="number"] {
+    width: 50px;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1em;
+    text-align: center;
+}
+
+.time-inputs select {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1em;
+    margin-left: 5px;
+}
+
+.time-inputs span {
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.modal-content .submit-btn {
+    background-color: #a020f0;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-top: 10px;
+}
+
+.modal-content .submit-btn:hover {
+    background-color: #8a1bc7;
+}
+
+.modal-notes {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #ddd;
+    text-align: left;
+}
+
+.note {
+    margin-bottom: 10px;
+    font-size: 0.9em;
+    color: #555;
+    line-height: 1.4;
+    padding: 5px 0;
+}
+
+.note:first-child {
+    font-weight: bold;
+    color: #d32f2f;
+}
+
+.note:nth-child(2) {
+    font-style: italic;
+    color: #1976d2;
+}
+
+.note:last-child {
+    color: #388e3c;
+    font-weight: bold;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .admin-container {
+        padding: 20px;
+    }
+
+    .admin-buttons {
+        grid-template-columns: 1fr;
+        gap: 15px;
+        max-width: 90%;
+    }
+
+    .admin-btn {
+        padding: 15px;
+        font-size: 1em;
+    }
+}
+
+/* Input Row Styles */
+.input-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 5px;
+}
+
+/* Checkbox Styles */
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    margin-left: 20px;
+}
+
+.checkbox-container input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+    accent-color: #a020f0;
+    cursor: pointer;
+}
+
+.checkbox-container label {
+    font-size: 0.9em;
+    color: #555;
+    cursor: pointer;
+    user-select: none;
+}
+
+/* Additional mobile-friendly adjustments */
+@media (max-width: 480px) {
+    .admin-buttons {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .admin-btn {
+        width: 100%;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 0.95em;
+    }
+}
+
+@media (min-width: 769px) {
+    .admin-container {
+        padding: 40px;
+    }
+
+    .admin-buttons {
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        max-width: 600px;
+    }
+
+    .admin-btn {
+        padding: 20px;
+        font-size: 1.2em;
+    }
+}

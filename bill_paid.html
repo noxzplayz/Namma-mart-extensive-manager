@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Namma Mart - Bill Paid</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="employee.css">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <h1>NAMMA MART</h1>
+            <p>Signature Of Quality</p>
+        </div>
+        <div class="manager-info">
+            <h2>EXTENSIVE MANAGER</h2>
+            <p>Designed By Yochan</p>
+        </div>
+    </header>
+    <div class="back-button">
+        <button onclick="window.location.href='employee.html'">Back</button>
+    </div>
+    <main>
+        <div class="employee-container">
+            <form id="bill-paid-form">
+                <div class="input-fields">
+                    <label for="vendor-supplier">Vendor / Supplier:</label>
+                    <input type="text" id="vendor-supplier" name="vendor-supplier" required><br><br>
+                    <label for="amount-paid">Amount Paid:</label>
+                    <input type="text" id="amount-paid" name="amount-paid" required><br><br>
+                    <button type="submit" class="submit-btn">Submit</button>
+                </div>
+            </form>
+        </div>
+    </main>
+    <footer>
+        <p>Made with ❤️ By <a href="https://www.instagram.com/yochxn.__/" target="_blank">Yochan</a></p>
+    </footer>
+    <script>
+        // Get employee ID from localStorage (assuming it's stored during login)
+        const employeeId = localStorage.getItem('employeeId');
+
+        document.getElementById('bill-paid-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            if (!employeeId) {
+                alert('Employee ID not found. Please login again.');
+                return;
+            }
+
+            const formData = new FormData(this);
+            const data = {
+                employeeId: employeeId,
+                vendorSupplier: formData.get('vendor-supplier'),
+                amountPaid: formData.get('amount-paid')
+            };
+
+            fetch('/api/bill_paid', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert('Data saved successfully!');
+                    // Reset form
+                    this.reset();
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while saving data.');
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Namma Mart Panel - User Manual</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1, h2, h3, h4 {
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        h2 {
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 5px;
+            margin-top: 30px;
+        }
+        h3 {
+            color: #555;
+        }
+        .code-block {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+        }
+        .file-list {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .api-endpoint {
+            background-color: #e8f5e8;
+            border-left: 4px solid #4CAF50;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        .api-method {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .feature-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .feature-list li {
+            background-color: #f9f9f9;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Namma Mart Panel - User Manual</h1>
+
+        <h2>User Manual</h2>
+        <p>This section provides a complete step-by-step guide to using the Namma Mart Panel application, from initial setup to end shift operations.</p>
+
+        <h3>1. Initial Setup and Installation</h3>
+        <ol>
+            <li><strong>Install Node.js:</strong> Download and install Node.js (version 14 or higher) from the official website if not already installed.</li>
+            <li><strong>Download Project:</strong> Obtain the Namma Mart Panel project files and extract them to a folder on your computer.</li>
+            <li><strong>Open Terminal/Command Prompt:</strong> Navigate to the project directory using the terminal or command prompt.</li>
+            <li><strong>Install Dependencies:</strong> Run the command <code>npm install</code> to install all required Node.js packages.</li>
+            <li><strong>Configure Email Settings:</strong> Open <code>server.js</code> and update the email configuration (Gmail SMTP settings) for OTP functionality.</li>
+            <li><strong>Start the Server:</strong> Run <code>node server.js</code> to start the application server.</li>
+            <li><strong>Access Application:</strong> Open a web browser and navigate to <code>http://localhost:3000</code> to access the login page.</li>
+        </ol>
+
+        <h3>2. Login Process</h3>
+        <ol>
+            <li><strong>Open Login Page:</strong> Ensure the server is running and open <code>http://localhost:3000</code> in your browser.</li>
+            <li><strong>Enter Credentials:</strong> Input your assigned username and password in the respective fields.</li>
+            <li><strong>Submit Login:</strong> Click the "Login" button to authenticate.</li>
+            <li><strong>Access Granted:</strong> Upon successful login, you'll be redirected to either the admin dashboard or employee interface based on your role.</li>
+            <li><strong>Troubleshooting:</strong> If login fails, verify credentials or contact the admin for assistance.</li>
+        </ol>
+
+        <h3>3. Admin Dashboard Operations</h3>
+        <ol>
+            <li><strong>Access Admin Panel:</strong> After login as admin, you'll see the admin dashboard with store status and employee list.</li>
+            <li><strong>Check Store Status:</strong> View current store status (open/closed) and shift information.</li>
+            <li><strong>Start New Shift:</strong> Click "Start Shift", enter the admin password, and confirm to open the store for the day.</li>
+            <li><strong>Employee Management:</strong> Click "Manage Employees" to add, edit, or remove employees.</li>
+            <li><strong>View Reports:</strong> Access "Analysis" or "View Report" to monitor transactions and generate insights.</li>
+            <li><strong>End Shift Process:</strong> When ready to close, click "End Shift" to initiate the closing procedure.</li>
+        </ol>
+
+        <h3>4. Employee Management (Admin Only)</h3>
+        <ol>
+            <li><strong>Navigate to Employee Management:</strong> From admin dashboard, click "Manage Employees".</li>
+            <li><strong>Add New Employee:</strong>
+                <ol type="a">
+                    <li>Click "Add Employee".</li>
+                    <li>Fill in employee details: Name, Username, Email, Password.</li>
+                    <li>Click "Save" to create the employee account.</li>
+                </ol>
+            </li>
+            <li><strong>Edit Employee:</strong>
+                <ol type="a">
+                    <li>Select an employee from the list.</li>
+                    <li>Click "Edit" and modify the required fields.</li>
+                    <li>Click "Save" to update the information.</li>
+                </ol>
+            </li>
+            <li><strong>Delete Employee:</strong>
+                <ol type="a">
+                    <li>Select the employee to remove.</li>
+                    <li>Click "Delete" and confirm the action.</li>
+                    <li>Note: Employee data may be preserved in history for auditing.</li>
+                </ol>
+            </li>
+            <li><strong>Assign Roles:</strong> Ensure employees have appropriate access levels set.</li>
+        </ol>
+
+        <h3>5. Daily Operations for Employees</h3>
+        <h4>Counter Selection</h4>
+        <ol>
+            <li><strong>Login as Employee:</strong> Use employee credentials to log in.</li>
+            <li><strong>Select Counter:</strong> Choose between Counter 1 or Counter 2 from the available options.</li>
+            <li><strong>Set Shift Times:</strong> Enter shift start and end timestamps.</li>
+            <li><strong>Pine Lab Value:</strong> If Counter 1 is selected, enter the Pine Lab Value (required for Counter 1 only).</li>
+            <li><strong>Confirm Selection:</strong> Click "Submit" to save counter selection and begin shift.</li>
+        </ol>
+
+        <h4>Transaction Entry</h4>
+        <ol>
+            <li><strong>Access Transaction Forms:</strong> From the employee dashboard, select the type of transaction to enter.</li>
+            <li><strong>Extra Transactions:</strong>
+                <ol type="a">
+                    <li>Select "Extra" from the menu.</li>
+                    <li>Enter Item Name, Bill Number, Amount, and Mode of Pay (Cash/Card/UPI/Other).</li>
+                    <li>Click "Submit" to record the transaction.</li>
+                </ol>
+            </li>
+            <li><strong>Delivery Transactions:</strong>
+                <ol type="a">
+                    <li>Select "Delivery" from the menu.</li>
+                    <li>Enter Bill Number, Amount, and Mode of Pay.</li>
+                    <li>Click "Submit" to record.</li>
+                </ol>
+            </li>
+            <li><strong>Bill Paid Transactions:</strong>
+                <ol type="a">
+                    <li>Select "Bill Paid" from the menu.</li>
+                    <li>Enter Vendor/Supplier name and Amount Paid.</li>
+                    <li>Click "Submit" to record.</li>
+                </ol>
+            </li>
+            <li><strong>Issue Reporting:</strong>
+                <ol type="a">
+                    <li>Select "Issue" from the menu.</li>
+                    <li>Enter Bill Number and detailed Issue Description.</li>
+                    <li>Click "Submit" to report the issue.</li>
+                </ol>
+            </li>
+            <li><strong>Retail Credit:</strong>
+                <ol type="a">
+                    <li>Select "Retail Credit" from the menu.</li>
+                    <li>Enter Phone Number, Amount, and Mode of Pay.</li>
+                    <li>Click "Submit" to record.</li>
+                </ol>
+            </li>
+        </ol>
+
+        <h3>6. Reporting and Analysis</h3>
+        <ol>
+            <li><strong>Access Analysis:</strong> From the main menu, click "Analysis" to view data insights and charts.</li>
+            <li><strong>View Detailed Reports:</strong>
+                <ol type="a">
+                    <li>Click "View Report".</li>
+                    <li>Select an employee from the list.</li>
+                    <li>Choose a date for the report.</li>
+                    <li>View transaction data categorized by type (Extra, Delivery, etc.).</li>
+                </ol>
+            </li>
+            <li><strong>Apply Filters:</strong> Use date ranges, amounts, or other filters to narrow down report data.</li>
+            <li><strong>Export Reports:</strong> Click "Export to Excel" to download filtered data for external use.</li>
+            <li><strong>View History:</strong> Access edit and deletion history with reasons and timestamps.</li>
+            <li><strong>Edit Records:</strong> From reports, edit counter data with reason (requires admin approval).</li>
+            <li><strong>Delete Records:</strong> Delete records with mandatory reason (tracked in history).</li>
+        </ol>
+
+        <h3>7. End Shift Process</h3>
+        <ol>
+            <li><strong>Initiate End Shift:</strong> From admin dashboard, click "End Shift" when ready to close the store.</li>
+            <li><strong>Admin Password Verification:</strong> Enter the admin password to proceed.</li>
+            <li><strong>OTP Generation:</strong> An OTP (One-Time Password) will be sent to the admin's email.</li>
+            <li><strong>Enter OTP:</strong> Check email and enter the received OTP in the application.</li>
+            <li><strong>Confirm End Shift:</strong> Click "Confirm" to finalize the shift closure.</li>
+            <li><strong>Generate Report:</strong> The system will generate a comprehensive end shift report with all transactions.</li>
+            <li><strong>Store Closure:</strong> The store status changes to closed, preventing further transactions until next shift start.</li>
+            <li><strong>Email Notification:</strong> End shift report may be emailed to designated recipients.</li>
+        </ol>
+
+        <h3>8. Data Management and Maintenance</h3>
+        <ol>
+            <li><strong>Data Storage:</strong> All application data is stored in the <code>db.json</code> file.</li>
+            <li><strong>History Tracking:</strong> All edits and deletions are logged with timestamps, reasons, and user information.</li>
+            <li><strong>Restore Deleted Items:</strong> From history, restore accidentally deleted records.</li>
+            <li><strong>Backup Data:</strong> Regularly backup <code>db.json</code> to prevent data loss.</li>
+            <li><strong>Data Integrity:</strong> Ensure accurate data entry to maintain report accuracy.</li>
+            <li><strong>Password Management:</strong> Contact admin for password resets if needed.</li>
+        </ol>
+
+        <div class="warning">
+            <strong>Important Notes and Best Practices:</strong>
+            <ul>
+                <li>Always provide detailed reasons when editing or deleting records for audit purposes.</li>
+                <li>Ensure all transaction data is entered accurately to maintain financial integrity.</li>
+                <li>Regularly check email for OTP during end shift process.</li>
+                <li>Backup the <code>db.json</code> file frequently to prevent data loss.</li>
+                <li>Contact admin immediately for technical issues or credential problems.</li>
+                <li>Log out after completing work to maintain security.</li>
+                <li>Verify counter selection and Pine Lab values before starting transactions.</li>
+                <li>Use appropriate transaction categories to ensure proper reporting.</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

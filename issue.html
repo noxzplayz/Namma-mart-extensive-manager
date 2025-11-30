@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Namma Mart - Issue</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="employee.css">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <h1>NAMMA MART</h1>
+            <p>Signature Of Quality</p>
+        </div>
+        <div class="manager-info">
+            <h2>EXTENSIVE MANAGER</h2>
+            <p>Designed By Yochan</p>
+        </div>
+    </header>
+    <div class="back-button">
+        <button onclick="window.location.href='employee.html'">Back</button>
+    </div>
+    <div class="toggle-container-top">
+        <label class="switch">
+            <input type="checkbox" id="non-bill-issue-toggle">
+            <span class="slider"></span>
+        </label>
+        <span class="toggle-label">NON BILL ISSUE</span>
+    </div>
+    <main>
+        <div class="employee-container">
+            <form id="issue-form">
+                <div class="input-fields">
+                    <div id="bill-number-field">
+                        <label for="bill-number">Bill Number:</label>
+                        <input type="text" id="bill-number" name="bill-number" required><br><br>
+                    </div>
+                    <label for="issue-description">What is the Issue you facing?</label>
+                    <textarea id="issue-description" name="issue-description" required></textarea><br><br>
+                    <button type="submit" class="submit-btn">Submit</button>
+                </div>
+            </form>
+        </div>
+    </main>
+    <footer>
+        <p>ISSUE PAGE</p>
+    </footer>
+    <script>
+        // Get employee ID from localStorage (assuming it's stored during login)
+        const employeeId = localStorage.getItem('employeeId');
+
+        document.getElementById('non-bill-issue-toggle').addEventListener('change', function() {
+            const billNumberField = document.getElementById('bill-number-field');
+            const billInput = document.getElementById('bill-number');
+            if (this.checked) {
+                // Hide and disable the bill input so HTML validation doesn't block submission
+                billNumberField.style.display = 'none';
+                billInput.value = 'NBS';
+                billInput.required = false;
+                billInput.disabled = true;
+            } else {
+                billNumberField.style.display = 'block';
+                billInput.value = '';
+                billInput.required = true;
+                billInput.disabled = false;
+            }
+        });
+
+        document.getElementById('issue-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            if (!employeeId) {
+                alert('Employee ID not found. Please login again.');
+                return;
+            }
+
+            const formData = new FormData(this);
+            const isNonBillIssue = document.getElementById('non-bill-issue-toggle').checked;
+            const data = {
+                employeeId: employeeId,
+                billNumber: isNonBillIssue ? 'NBS' : formData.get('bill-number'),
+                issueDescription: formData.get('issue-description')
+            };
+
+            fetch('/api/issue', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert('Data saved successfully!');
+                    // Reset form
+                    this.reset();
+                    document.getElementById('bill-number-field').style.display = 'block';
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while saving data.');
+            });
+        });
+    </script>
+</body>
+</html>
