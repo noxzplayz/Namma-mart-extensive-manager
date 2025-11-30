@@ -6,12 +6,27 @@ const FileSync = require('lowdb/adapters/FileSync');
 const shortid = require('shortid');
 const bcrypt = require('bcryptjs');
 const nodemailer = require('nodemailer');
+const puppeteer = require('puppeteer');
+const Database = require('better-sqlite3');
 
 const adapter = new FileSync('db.json');
 const db = low(adapter);
 
 // Set up the database defaults
 db.defaults({ store_closed: false, employees: [], auto_oc_settings: { open_time: null, close_time: null } }).write();
+
+// Set up SQLite database for ESR JPGs
+const esrDb = new Database('esrjpg.db');
+esrDb.exec(`
+    CREATE TABLE IF NOT EXISTS esr_jpgs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        employee_id TEXT NOT NULL,
+        date TEXT NOT NULL,
+        jpg_data BLOB NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(employee_id, date)
+    );
+`);
 
 const app = express();
 const port = 3000;
@@ -90,7 +105,6 @@ app.post('/login', async (req, res) => {
             const isLocal = ip === '::1' || ip === '127.0.0.1' || ip.startsWith('::ffff:127.0.0.1') || req.hostname === 'localhost';
 
             const responseBody = { success: false, requiresAdminApproval: true, message: 'Admin approval required to start new shift. OTP sent to admin email.', employeeId: employee.id };
-            if (isLocal) responseBody.debugOtp = otp;
 
             try {
                 await emailConfig.transporter.sendMail(mailOptions);
@@ -600,14 +614,8 @@ app.post('/api/verify-admin-password', async (req, res) => {
     try {
         await emailConfig.transporter.sendMail(mailOptions);
 
-        // If request is from localhost, return the OTP in the response for debugging convenience
-        const ip = (req.ip || '').toString();
-        const isLocal = ip === '::1' || ip === '127.0.0.1' || ip.startsWith('::ffff:127.0.0.1') || req.hostname === 'localhost';
-
-        const responseBody = { success: true, message: 'OTP sent to configured email.' };
-        if (isLocal) responseBody.debugOtp = otp;
-
-        return res.json(responseBody);
+            const responseBody = { success: true, message: 'OTP sent to configured email.' };
+            return res.json(responseBody);
     } catch (err) {
         console.error('Error sending OTP email:', err);
         // Clear OTP on failure
@@ -650,13 +658,7 @@ app.post('/api/send-employee-otp', async (req, res) => {
     try {
         await emailConfig.transporter.sendMail(mailOptions);
 
-        // If request is from localhost, return the OTP in the response for debugging convenience
-        const ip = (req.ip || '').toString();
-        const isLocal = ip === '::1' || ip === '127.0.0.1' || ip.startsWith('::ffff:127.0.0.1') || req.hostname === 'localhost';
-
         const responseBody = { success: true, message: 'OTP sent to your email.' };
-        if (isLocal) responseBody.debugOtp = otp;
-
         return res.json(responseBody);
     } catch (err) {
         console.error('Error sending employee OTP email:', err);
@@ -711,6 +713,28 @@ app.post('/api/verify-employee-otp', async (req, res) => {
     }
     db.get('employees').find({ id: employeeId }).assign({ shiftEnded: true, counter_selections: employeeForShiftEnd.counter_selections }).write();
 
+    // Generate and save ESR JPG
+    const date = endShiftTime.split('T')[0];
+    let screenshotBuffer = null;
+    try {
+        const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+        const page = await browser.newPage();
+        await page.setViewport({ width: 1200, height: 800 }); // Set viewport for better rendering
+        await page.goto(`http://localhost:${port}/end_shift_report.html?employeeId=${employeeId}&date=${date}`, { waitUntil: 'networkidle2' });
+        await page.waitForSelector('#summary', { timeout: 10000 });
+        await page.waitForTimeout(5000); // Wait for async data loading and rendering
+        await page.waitForSelector('footer', { timeout: 10000 }); // Ensure footer is loaded
+        const screenshot = await page.screenshot({ type: 'jpeg', fullPage: true });
+        await browser.close();
+        screenshotBuffer = screenshot; // Store buffer for email attachment
+        const jpgData = screenshot.toString('base64');
+        const stmt = esrDb.prepare('INSERT OR REPLACE INTO esr_jpgs (employee_id, date, jpg_data) VALUES (?, ?, ?)');
+        stmt.run(employeeId, date, Buffer.from(jpgData, 'base64'));
+        console.log(`ESR JPG generated and saved for employee ${employeeId} on ${date}`);
+    } catch (error) {
+        console.error('Error generating ESR JPG:', error);
+    }
+
     // Fetch updated employee data
     const employee = db.get('employees').find({ id: employeeId }).value();
     if (!employee) {
@@ -729,23 +753,29 @@ Your shift has ended successfully.
 Shift Start Time: ${startShiftTime}
 Shift End Time: ${endShiftTime}
 
+Please find attached the end shift report screenshot.
+
 Thank you for your work today.
 
 Regards,
 Namma Mart
     `;
 
-    // Send email with nodemailer
+    // Send email with nodemailer including attachment
     const mailOptions = {
         from: emailConfig.from,
         to: employee.email,
         subject: 'Namma Mart - Shift End Report',
-        text: emailText
+        text: emailText,
+        attachments: screenshotBuffer ? [{
+            filename: 'end_shift_report.jpg',
+            content: screenshotBuffer
+        }] : []
     };
 
     try {
         await emailConfig.transporter.sendMail(mailOptions);
-        console.log(`Shift end report email sent to ${employee.email}`);
+        console.log(`Shift end report email with attachment sent to ${employee.email}`);
     } catch (err) {
         console.error('Error sending shift end report email:', err);
         // Not failing the API call, just logging
@@ -1288,6 +1318,59 @@ function checkAutoOpenClose() {
         console.log(`Store automatically closed and all employee shifts ended at ${currentTime}`);
     }
 }
+
+// Get ESR JPGs for an employee
+app.get('/api/esr-jpgs', (req, res) => {
+    const { employeeId, date } = req.query;
+
+    if (!employeeId) {
+        return res.status(400).json({ success: false, message: 'employeeId is required.' });
+    }
+
+    try {
+        let stmt;
+        let rows;
+        if (date) {
+            stmt = esrDb.prepare('SELECT id, date, jpg_data FROM esr_jpgs WHERE employee_id = ? AND date = ? ORDER BY date DESC');
+            rows = stmt.all(employeeId, date);
+        } else {
+            stmt = esrDb.prepare('SELECT id, date, jpg_data FROM esr_jpgs WHERE employee_id = ? ORDER BY date DESC');
+            rows = stmt.all(employeeId);
+        }
+
+        // Convert BLOB to base64 for JSON response
+        const jpgs = rows.map(row => ({
+            id: row.id,
+            date: row.date,
+            jpgData: row.jpg_data.toString('base64')
+        }));
+
+        res.json({ success: true, jpgs });
+    } catch (error) {
+        console.error('Error retrieving ESR JPGs:', error);
+        res.status(500).json({ success: false, message: 'Failed to retrieve ESR JPGs.' });
+    }
+});
+
+// Save ESR JPG
+app.post('/api/save-esr-jpg', (req, res) => {
+    const { employeeId, date, jpgData } = req.body;
+
+    if (!employeeId || !date || !jpgData) {
+        return res.status(400).json({ success: false, message: 'employeeId, date, and jpgData are required.' });
+    }
+
+    try {
+        // Assume jpgData is base64 encoded
+        const buffer = Buffer.from(jpgData, 'base64');
+        const stmt = esrDb.prepare('INSERT OR REPLACE INTO esr_jpgs (employee_id, date, jpg_data) VALUES (?, ?, ?)');
+        stmt.run(employeeId, date, buffer);
+        res.json({ success: true, message: 'ESR JPG saved successfully.' });
+    } catch (error) {
+        console.error('Error saving ESR JPG:', error);
+        res.status(500).json({ success: false, message: 'Failed to save ESR JPG.' });
+    }
+});
 
 // Run the auto check every minute
 setInterval(checkAutoOpenClose, 60 * 1000);
