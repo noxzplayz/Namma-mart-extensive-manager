@@ -107,8 +107,14 @@ app.post('/login', async (req, res) => {
             }
 
             return res.json(responseBody);
-        } else {
-            res.json({ success: true, redirectUrl: '/counter_selection.html', employeeId: employee.id });
+    } else {
+            // Check if there is an active shift (counter_selection with shiftEndTime null)
+            const activeShift = employee.counter_selections && employee.counter_selections.some(sel => !sel.shiftEndTime);
+            if (activeShift) {
+                res.json({ success: true, redirectUrl: '/employee.html', employeeId: employee.id });
+            } else {
+                res.json({ success: true, redirectUrl: '/counter_selection.html', employeeId: employee.id });
+            }
         }
     } else {
         res.status(401).json({ success: false, message: 'Invalid credentials.' });
