@@ -2,7 +2,7 @@
   "store_closed": false,
   "employees": [
     {
-      "name": "yochan",
+      "name": "test",
       "employee-id": "",
       "address": "",
       "blood-group": "",
@@ -25,110 +25,61 @@
       "start-time": "",
       "end-time": "",
       "break-time": "",
-      "username": "yochan",
-      "password": "$2a$10$jnmgz0Hw8sBkC9DQZK5W6eAKg58Z32835uLtwBHxHean/PC9pOtKe",
-      "id": "JgbTgRc1V",
-      "shiftEnded": false,
+      "username": "test",
+      "password": "$2a$10$2DnTSLydPwPyAGpV5kKYNuPgXi3sCkINCW.91KEF1IxUJziYhOz6e",
+      "id": "i9N1KEy7g",
+      "shiftEnded": true,
       "counter_selections": [
         {
-          "id": "eh9-be-xN",
-          "counter": "Counter 2",
-          "pineLabValue": null,
-          "timestamp": "2025-11-24T14:33:38.795Z"
-        },
-        {
-          "id": "X-8A6HMbx",
+          "id": "IRdNaQEec",
           "counter": "Counter 1",
-          "pineLabValue": "2525",
-          "timestamp": "2025-11-24T14:42:17.530Z"
-        },
-        {
-          "id": "VGuqbNuy7",
-          "counter": "Counter 1",
-          "pineLabValue": "678",
-          "timestamp": "2025-11-24T15:38:27.183Z"
-        },
-        {
-          "id": "HBAIGoVOR",
-          "counter": "Counter 1",
-          "pineLabValue": "56565",
-          "timestamp": "2025-11-25T02:07:34.336Z"
-        },
-        {
-          "id": "m6kHW0Dpo",
-          "counter": "Counter 1",
-          "pineLabValue": "56565",
-          "timestamp": "2025-11-25T02:21:10.599Z"
-        },
-        {
-          "id": "1G6mL0-78",
-          "counter": "Counter 1",
-          "pineLabValue": "2050",
-          "timestamp": "2025-11-29T14:59:00.281Z"
-        },
-        {
-          "id": "oXpyrDAkO",
-          "counter": "Counter 1",
-          "pineLabValue": "141614",
-          "timestamp": "2025-11-30T01:51:38.621Z"
-        },
-        {
-          "id": "MDvhQefyK",
-          "counter": "Counter 1",
-          "pineLabValue": "2515",
-          "shiftStartTime": "2025-11-30T02:16:53.566Z",
-          "shiftEndTime": null,
-          "timestamp": "2025-11-30T02:16:53.566Z"
+          "pineLabValue": "5050",
+          "shiftStartTime": "2025-11-30T11:18:45.576Z",
+          "shiftEndTime": "2025-11-30T11:19:30.593Z",
+          "timestamp": "2025-11-30T11:18:45.576Z"
         }
       ],
       "extra": [
         {
-          "id": "q8x31KPll",
-          "itemName": "Veg",
-          "billNumber": "167258",
-          "extraAmount": "67",
-          "modeOfPay": "Card Paytm",
-          "timestamp": "2025-11-24T15:38:41.673Z"
-        },
-        {
-          "id": "iL_ZEj_JK",
-          "itemName": "veg",
-          "billNumber": "2346",
-          "extraAmount": "234",
-          "modeOfPay": "Upi Pinelab",
-          "timestamp": "2025-11-25T02:07:54.713Z"
-        },
-        {
-          "id": "sP1TPkagg",
-          "itemName": "qwe",
-          "billNumber": "234",
-          "extraAmount": "2346",
-          "modeOfPay": "Card Pinelab",
-          "timestamp": "2025-11-25T02:08:07.289Z"
+          "id": "6qYnRhGQQ",
+          "itemName": "erer",
+          "billNumber": "erer",
+          "extraAmount": "3434",
+          "modeOfPay": "Upi Paytm",
+          "timestamp": "2025-11-30T11:18:54.199Z"
         }
       ],
       "delivery": [
         {
-          "id": "T3oIVfFuW",
+          "id": "S1Wq3oKGO",
           "billNumber": "qweryu",
           "amount": "23456io",
           "extraAmount": 0,
           "totalAmount": "23456io",
-          "modeOfPay": "Upi Paytm",
-          "timestamp": "2025-11-25T02:08:16.151Z"
+          "modeOfPay": "Card Pinelab",
+          "timestamp": "2025-11-30T11:19:01.607Z"
         }
       ],
-      "retail_credit": [
+      "bill_paid": [
         {
-          "id": "020tCSpnH",
-          "phoneNumber": "3456789009",
-          "amount": "2345",
-          "modeOfPay": "Card Paytm",
-          "timestamp": "2025-11-25T02:08:27.619Z"
+          "id": "D-OvG-9A7",
+          "vendorSupplier": "erer",
+          "amountPaid": "2323",
+          "timestamp": "2025-11-30T11:19:06.934Z"
         }
       ],
-      "startShiftTime": "2025-11-30T02:16:41.948Z",
-      "endShiftTime": "2025-11-30T02:00:01.546Z"
+      "issue": [
+        {
+          "id": "TwDk_0wiT",
+          "billNumber": "veg",
+          "issueDescription": "wrwerfgh",
+          "timestamp": "2025-11-30T11:19:17.758Z"
+        }
+      ]
     }
-  ]
+  ],
+  "auto_oc_settings": {
+    "open_time": null,
+    "close_time": null
+  }
 }

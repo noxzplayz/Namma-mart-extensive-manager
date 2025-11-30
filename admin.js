@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const viewReportBtn = document.querySelector('.view-report-btn');
+    const viewEsrJpgsBtn = document.querySelector('.view-esr-jpgs-btn');
     const manageEmployeesBtn = document.querySelector('.manage-employees-btn');
     const logoutBtn = document.querySelector('.logout-btn');
     const updateBtn = document.querySelector('.update-btn');
@@ -103,12 +104,14 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(data => {
             if (data.closed) {
                 viewReportBtn.style.display = 'none';
+                viewEsrJpgsBtn.style.display = 'none';
                 manageEmployeesBtn.style.display = 'none';
                 logoutBtn.style.display = 'none';
                 endShiftBtn.style.display = 'none';
                 startShiftBtn.style.display = 'block';
             } else {
                 viewReportBtn.style.display = 'block';
+                viewEsrJpgsBtn.style.display = 'block';
                 manageEmployeesBtn.style.display = 'block';
                 logoutBtn.style.display = 'block';
                 endShiftBtn.style.display = 'block';
@@ -121,6 +124,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     viewReportBtn.addEventListener('click', () => {
         window.open('view_report.html', '_blank');
+    });
+
+    viewEsrJpgsBtn.addEventListener('click', () => {
+        const modal = document.getElementById('esr-jpg-employee-selection-modal');
+        modal.style.display = 'block';
+
+        // Fetch employees and populate select
+        fetch('/api/employees')
+            .then(response => response.json())
+            .then(employees => {
+                const select = document.getElementById('esr-jpg-employee-select');
+                select.innerHTML = '<option value="">Select an employee</option>';
+                employees.forEach(employee => {
+                    const option = document.createElement('option');
+                    option.value = employee.id;
+                    option.textContent = employee.name;
+                    select.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching employees:', error);
+                alert('Error loading employees.');
+            });
     });
 
     manageEmployeesBtn.addEventListener('click', () => {
@@ -172,6 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (confirmData && confirmData.success) {
                     alert('Shift ended successfully. Store is now closed.');
                     viewReportBtn.style.display = 'none';
+                    viewEsrJpgsBtn.style.display = 'none';
                     manageEmployeesBtn.style.display = 'none';
                     logoutBtn.style.display = 'none';
                     endShiftBtn.style.display = 'none';
@@ -264,11 +291,50 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Close employee selection modal
+    const employeeSelectionClose = document.getElementById('employee-selection-close');
+    if (employeeSelectionClose) {
+        employeeSelectionClose.addEventListener('click', () => {
+            const modal = document.getElementById('employee-selection-modal');
+            modal.style.display = 'none';
+        });
+    }
+
+    // Close ESR JPG employee selection modal
+    const esrJpgEmployeeSelectionClose = document.getElementById('esr-jpg-employee-selection-close');
+    if (esrJpgEmployeeSelectionClose) {
+        esrJpgEmployeeSelectionClose.addEventListener('click', () => {
+            const modal = document.getElementById('esr-jpg-employee-selection-modal');
+            modal.style.display = 'none';
+        });
+    }
+
+    // Close ESR JPGs modal
+    const esrJpgsClose = document.getElementById('esr-jpgs-close');
+    if (esrJpgsClose) {
+        esrJpgsClose.addEventListener('click', () => {
+            const modal = document.getElementById('esr-jpgs-modal');
+            modal.style.display = 'none';
+        });
+    }
+
     // Close modal when clicking outside of it
     window.addEventListener('click', (event) => {
         const modal = document.getElementById('auto-oc-modal');
         if (event.target === modal) {
             modal.style.display = 'none';
+        }
+        const employeeModal = document.getElementById('employee-selection-modal');
+        if (event.target === employeeModal) {
+            employeeModal.style.display = 'none';
+        }
+        const esrJpgEmployeeModal = document.getElementById('esr-jpg-employee-selection-modal');
+        if (event.target === esrJpgEmployeeModal) {
+            esrJpgEmployeeModal.style.display = 'none';
+        }
+        const esrJpgsModal = document.getElementById('esr-jpgs-modal');
+        if (event.target === esrJpgsModal) {
+            esrJpgsModal.style.display = 'none';
         }
     });
 
@@ -323,6 +389,127 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Error saving settings:', error);
                 alert('Error saving settings.');
             });
+        });
+    }
+
+    // Handle employee selection form submission
+    const employeeSelectionForm = document.getElementById('employee-selection-form');
+    if (employeeSelectionForm) {
+        employeeSelectionForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+
+            const selectedEmployeeId = document.getElementById('employee-select').value;
+            const selectedDate = document.getElementById('shift-summary-date').value;
+            if (!selectedEmployeeId) {
+                alert('Please select an employee.');
+                return;
+            }
+            if (!selectedDate) {
+                alert('Please select a date.');
+                return;
+            }
+
+            // Open end_shift_report.html with employeeId and date parameters
+            window.open(`end_shift_report.html?employeeId=${selectedEmployeeId}&date=${selectedDate}`, '_blank');
+
+            // Close the modal
+            const modal = document.getElementById('employee-selection-modal');
+            modal.style.display = 'none';
+        });
+    }
+
+    let currentEmployeeId = null;
+
+    // Function to fetch and display ESR JPGs
+    const fetchAndDisplayEsrJpgs = (employeeId, date = null) => {
+        let url = `/api/esr-jpgs?employeeId=${employeeId}`;
+        if (date) {
+            url += `&date=${date}`;
+        }
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const grid = document.getElementById('esr-jpgs-grid');
+                    grid.innerHTML = '';
+
+                    if (data.jpgs && data.jpgs.length > 0) {
+                        data.jpgs.forEach(jpg => {
+                            const imageUrl = `data:image/jpeg;base64,${jpg.jpgData}`;
+                            const item = document.createElement('div');
+                            item.className = 'jpg-item';
+                            item.innerHTML = `
+                                <img src="${imageUrl}" alt="ESR JPG" onclick="window.open('${imageUrl}', '_blank')">
+                                <div class="date">${jpg.date}</div>
+                            `;
+                            grid.appendChild(item);
+                        });
+                    } else {
+                        grid.innerHTML = '<p>No ESR JPGs found for this employee.</p>';
+                    }
+
+                    // Show the JPGs modal
+                    const jpgsModal = document.getElementById('esr-jpgs-modal');
+                    jpgsModal.style.display = 'block';
+                } else {
+                    alert('Error loading ESR JPGs: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching ESR JPGs:', error);
+                alert('Error loading ESR JPGs.');
+            });
+    };
+
+    // Handle ESR JPG employee selection form submission
+    const esrJpgEmployeeSelectionForm = document.getElementById('esr-jpg-employee-selection-form');
+    if (esrJpgEmployeeSelectionForm) {
+        esrJpgEmployeeSelectionForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+
+            const selectedEmployeeId = document.getElementById('esr-jpg-employee-select').value;
+            if (!selectedEmployeeId) {
+                alert('Please select an employee.');
+                return;
+            }
+
+            currentEmployeeId = selectedEmployeeId;
+
+            // Fetch ESR JPGs for the selected employee
+            fetchAndDisplayEsrJpgs(selectedEmployeeId);
+
+            // Close the employee selection modal
+            const modal = document.getElementById('esr-jpg-employee-selection-modal');
+            modal.style.display = 'none';
+        });
+    }
+
+    // Handle apply date filter
+    const applyDateFilterBtn = document.getElementById('apply-date-filter-btn');
+    if (applyDateFilterBtn) {
+        applyDateFilterBtn.addEventListener('click', () => {
+            if (!currentEmployeeId) {
+                alert('Please select an employee first.');
+                return;
+            }
+
+            const dateFilter = document.getElementById('esr-jpg-date-filter').value;
+            fetchAndDisplayEsrJpgs(currentEmployeeId, dateFilter);
+        });
+    }
+
+    // Handle clear date filter
+    const clearDateFilterBtn = document.getElementById('clear-date-filter-btn');
+    if (clearDateFilterBtn) {
+        clearDateFilterBtn.addEventListener('click', () => {
+            if (!currentEmployeeId) {
+                alert('Please select an employee first.');
+                return;
+            }
+
+            document.getElementById('esr-jpg-date-filter').value = '';
+            fetchAndDisplayEsrJpgs(currentEmployeeId);
         });
     }
 });

@@ -45,11 +45,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (data.requiresAdminApproval) {
                     // Show OTP input for admin approval
                     const loginContainer = document.querySelector('.login-container');
-                    const debugOtpHtml = data.debugOtp ? `<p style="color: red; font-weight: bold;">Debug OTP: ${data.debugOtp}</p>` : '';
                     loginContainer.innerHTML = `
                         <h2>ADMIN APPROVAL REQUIRED</h2>
                         <p>${data.message}</p>
-                        ${debugOtpHtml}
                         <form id="otp-form">
                             <div class="input-group">
                                 <input type="text" id="otp" name="otp" required>

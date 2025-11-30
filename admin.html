@@ -22,6 +22,7 @@
         <div class="admin-container">
             <div class="admin-buttons">
                 <button class="admin-btn view-report-btn">VIEW Report</button>
+                <button class="admin-btn view-esr-jpgs-btn">View Shift Summary</button>
                 <button class="admin-btn manage-employees-btn">Manage EMployees</button>
                 <button class="admin-btn logout-btn">Logout</button>
                 <button class="admin-btn auto-oc-btn">Auto O/C</button>
@@ -99,6 +100,62 @@
                 <p>Loading update details...</p>
             </div>
             <button id="proceed-update-btn" class="submit-btn">Proceed with Update</button>
+        </div>
+    </div>
+
+    <!-- Employee Selection Modal for Shift Summary -->
+    <div id="employee-selection-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="employee-selection-close">&times;</span>
+            <h2>Select Employee for Shift Summary</h2>
+            <form id="employee-selection-form">
+                <div class="form-group">
+                    <label for="employee-select">Choose Employee:</label>
+                    <select id="employee-select" name="employee-select" required>
+                        <option value="">Loading employees...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="shift-summary-date">Select Date:</label>
+                    <input type="date" id="shift-summary-date" name="shift-summary-date" required>
+                </div>
+                <button type="submit" class="submit-btn">View Shift Summary</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Employee Selection Modal for ESR JPGs -->
+    <div id="esr-jpg-employee-selection-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="esr-jpg-employee-selection-close">&times;</span>
+            <h2>Select Employee To View Shift Summary</h2>
+            <form id="esr-jpg-employee-selection-form">
+                <div class="form-group">
+                    <label for="esr-jpg-employee-select">Choose Employee:</label>
+                    <select id="esr-jpg-employee-select" name="esr-jpg-employee-select" required>
+                        <option value="">Loading employees...</option>
+                    </select>
+                </div>
+                <button type="submit" class="submit-btn">View ESR JPGs</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ESR JPGs Display Modal -->
+    <div id="esr-jpgs-modal" class="modal">
+        <div class="modal-content large-modal">
+            <span class="close" id="esr-jpgs-close">&times;</span>
+            <h2>End Shift Report JPGs</h2>
+            <h3>Right Click On The Image To Save Or View </h3>
+            <div class="filter-container">
+                <label for="esr-jpg-date-filter">Filter by Date:</label>
+                <input type="date" id="esr-jpg-date-filter" name="esr-jpg-date-filter">
+                <button id="apply-date-filter-btn" class="filter-btn">Apply Filter</button>
+                <button id="clear-date-filter-btn" class="filter-btn">Clear Filter</button>
+            </div>
+            <div id="esr-jpgs-grid" class="jpg-grid">
+                <!-- JPGs will be loaded here -->
+            </div>
         </div>
     </div>
 

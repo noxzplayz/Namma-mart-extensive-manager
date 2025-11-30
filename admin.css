@@ -225,6 +225,45 @@
     }
 }
 
+/* Large Modal Styles */
+.large-modal {
+    width: 90%;
+    max-width: 1200px;
+    margin: 5% auto;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+/* JPG Grid Styles */
+.jpg-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.jpg-item {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.jpg-item img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.jpg-item .date {
+    padding: 10px;
+    background-color: #f8f9fa;
+    text-align: center;
+    font-weight: bold;
+    color: #333;
+}
+
 /* Update button positioning */
 .update-container {
     position: fixed;

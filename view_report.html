@@ -176,6 +176,7 @@
         let selectedEmployeeId;
         let selectedDate;
         let selectedIsHistory = false;
+        let selectedIsShiftSummary = false;
 
         function showModal(employeeId) {
             selectedEmployeeId = employeeId;
@@ -318,6 +319,8 @@
                     });
                     buttonContainer.appendChild(button);
                 });
+
+
 
             reportDiv.appendChild(buttonContainer);
 
@@ -949,6 +952,84 @@
             }
 
             renderTable(filteredData);
+
+            dataTableContainer.style.display = 'block';
+        }
+
+        function displayShiftSummary(data) {
+            const dataTableContainer = document.getElementById('data-table');
+            dataTableContainer.innerHTML = '';
+
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = 'Close';
+            closeBtn.addEventListener('click', () => {
+                dataTableContainer.style.display = 'none';
+            });
+            dataTableContainer.appendChild(closeBtn);
+
+            const tableTitle = document.createElement('h3');
+            tableTitle.textContent = 'Shift Summary';
+            dataTableContainer.appendChild(tableTitle);
+
+            const table = document.createElement('table');
+            table.style.width = '100%';
+            table.style.borderCollapse = 'collapse';
+
+            const headers = ['Counter', 'Number of Entries', 'Total Pine Lab Value'];
+            const headerRow = document.createElement('tr');
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                th.style.border = '1px solid #ddd';
+                th.style.padding = '8px';
+                th.style.backgroundColor = '#f2f2f2';
+                headerRow.appendChild(th);
+            });
+            table.appendChild(headerRow);
+
+            // Group data by counter
+            const summary = {};
+            data.forEach(item => {
+                const counter = item.counter || 'Unknown';
+                if (!summary[counter]) {
+                    summary[counter] = { count: 0, totalPine: 0 };
+                }
+                summary[counter].count++;
+                if (counter.toLowerCase() === 'counter 1') {
+                    const pine = parseFloat(item.pineLabValue || 0);
+                    summary[counter].totalPine += pine;
+                }
+            });
+
+            Object.keys(summary).forEach(counter => {
+                const tr = document.createElement('tr');
+
+                const counterTd = document.createElement('td');
+                counterTd.textContent = counter;
+                counterTd.style.border = '1px solid #ddd';
+                counterTd.style.padding = '8px';
+                tr.appendChild(counterTd);
+
+                const countTd = document.createElement('td');
+                countTd.textContent = summary[counter].count;
+                countTd.style.border = '1px solid #ddd';
+                countTd.style.padding = '8px';
+                tr.appendChild(countTd);
+
+                const pineTd = document.createElement('td');
+                if (counter.toLowerCase() === 'counter 1') {
+                    pineTd.textContent = summary[counter].totalPine.toFixed(2);
+                } else {
+                    pineTd.textContent = 'N/A';
+                }
+                pineTd.style.border = '1px solid #ddd';
+                pineTd.style.padding = '8px';
+                tr.appendChild(pineTd);
+
+                table.appendChild(tr);
+            });
+
+            dataTableContainer.appendChild(table);
 
             dataTableContainer.style.display = 'block';
         }

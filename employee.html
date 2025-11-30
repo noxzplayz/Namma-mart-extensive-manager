@@ -69,11 +69,7 @@
                     alert('Failed to send OTP: ' + otpData.message);
                     return;
                 }
-                let message = 'OTP sent to your email. Please check your inbox.';
-                if (otpData.debugOtp) {
-                    message += ` Debug OTP: ${otpData.debugOtp}`;
-                }
-                alert(message);
+                alert('OTP sent to your email. Please check your inbox.');
             } catch (error) {
                 console.error('Error sending OTP:', error);
                 alert('An error occurred while sending OTP.');
