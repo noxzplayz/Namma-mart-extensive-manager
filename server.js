@@ -1172,6 +1172,46 @@ app.get('/api/todays-report-summary', (req, res) => {
     }
 });
 
+// Update app endpoint
+app.post('/api/update-app', (req, res) => {
+    const { exec } = require('child_process');
+    exec('./update.sh', (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Update error: ${error}`);
+            return res.status(500).json({ success: false, message: 'Update failed: ' + error.message });
+        }
+        console.log(`Update stdout: ${stdout}`);
+        if (stderr) console.error(`Update stderr: ${stderr}`);
+        res.json({ success: true, message: stdout });
+    });
+});
+
+// Check for updates endpoint
+app.get('/api/check-update', (req, res) => {
+    const { exec } = require('child_process');
+    exec('git fetch && git status -uno', (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Error checking for updates: ${error}`);
+            return res.json({ updateAvailable: false, error: error.message });
+        }
+        const hasUpdates = stdout.includes('Your branch is behind') || stdout.includes('have diverged');
+        res.json({ updateAvailable: hasUpdates });
+    });
+});
+
+// Get update details endpoint
+app.get('/api/update-details', (req, res) => {
+    const { exec } = require('child_process');
+    exec('git log --oneline -10', (error, stdout, stderr) => {
+        if (error) {
+            console.error(`Error getting update details: ${error}`);
+            return res.json({ details: 'Unable to fetch update details.', error: error.message });
+        }
+        const details = stdout.split('\n').filter(line => line.trim()).join('\n');
+        res.json({ details });
+    });
+});
+
 // Function to check and update store status based on auto open/close settings
 function checkAutoOpenClose() {
     const settings = db.get('auto_oc_settings').value();

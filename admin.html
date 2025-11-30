@@ -31,6 +31,9 @@
                 <button class="admin-btn start-shift-btn" style="display: none;">Start Shift</button>
             </div>
         </div>
+        <div class="update-container">
+            <button class="admin-btn update-btn">Update App</button>
+        </div>
     </main>
     <footer>
         <p>Made with ❤️ By <a href="https://www.instagram.com/yochxn.__/" target="_blank">Yochan</a></p>
@@ -81,9 +84,21 @@
             </form>
             <div class="modal-notes">
                 <p class="note">This setting will work daily. Please add proper data. Wrong data may lead to improper timed open and close.</p>
-                
+
                 <p class="note">Note: The data will be stored before performing auto close.</p>
             </div>
+        </div>
+    </div>
+
+    <!-- Update Details Modal -->
+    <div id="update-details-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="update-details-close">&times;</span>
+            <h2>Update Details</h2>
+            <div id="update-details-content">
+                <p>Loading update details...</p>
+            </div>
+            <button id="proceed-update-btn" class="submit-btn">Proceed with Update</button>
         </div>
     </div>
 

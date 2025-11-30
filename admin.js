@@ -2,9 +2,100 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewReportBtn = document.querySelector('.view-report-btn');
     const manageEmployeesBtn = document.querySelector('.manage-employees-btn');
     const logoutBtn = document.querySelector('.logout-btn');
+    const updateBtn = document.querySelector('.update-btn');
+    const updateContainer = document.querySelector('.update-container');
     const endShiftBtn = document.querySelector('.end-shift-btn');
     const startShiftBtn = document.querySelector('.start-shift-btn');
     const autoOcBtn = document.querySelector('.auto-oc-btn');
+
+    // Function to check for updates
+    const checkForUpdates = () => {
+        fetch('/api/check-update')
+            .then(response => response.json())
+            .then(data => {
+                if (data.updateAvailable) {
+                    updateContainer.classList.add('update-available');
+                } else {
+                    updateContainer.classList.remove('update-available');
+                }
+            })
+            .catch(error => {
+                console.error('Error checking for updates:', error);
+            });
+    };
+
+    // Check for updates on page load
+    checkForUpdates();
+
+    // Check for updates every 5 minutes
+    setInterval(checkForUpdates, 5 * 60 * 1000);
+
+    // Update button click handler
+    updateBtn.addEventListener('click', () => {
+        const modal = document.getElementById('update-details-modal');
+        const content = document.getElementById('update-details-content');
+        const proceedBtn = document.getElementById('proceed-update-btn');
+
+        // Show modal and fetch update details
+        modal.style.display = 'block';
+        content.innerHTML = '<p>Loading update details...</p>';
+
+        fetch('/api/update-details')
+            .then(response => response.json())
+            .then(data => {
+                if (data.details) {
+                    const detailsHtml = data.details.split('\n').map(line => `<p>${line}</p>`).join('');
+                    content.innerHTML = `<h3>What's New in This Update:</h3>${detailsHtml}`;
+                } else {
+                    content.innerHTML = '<p>Unable to fetch update details. Proceed with update anyway?</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching update details:', error);
+                content.innerHTML = '<p>Error loading update details. Proceed with update anyway?</p>';
+            });
+
+        // Handle proceed button
+        proceedBtn.onclick = () => {
+            modal.style.display = 'none';
+            fetch('/api/update-app', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Update successful: ' + data.message);
+                    // Optionally reload the page or redirect
+                    window.location.reload();
+                } else {
+                    alert('Update failed: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error updating app:', error);
+                alert('Error updating app.');
+            });
+        };
+    });
+
+    // Close update details modal
+    const updateDetailsClose = document.getElementById('update-details-close');
+    if (updateDetailsClose) {
+        updateDetailsClose.addEventListener('click', () => {
+            const modal = document.getElementById('update-details-modal');
+            modal.style.display = 'none';
+        });
+    }
+
+    // Close update details modal when clicking outside
+    window.addEventListener('click', (event) => {
+        const modal = document.getElementById('update-details-modal');
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
 
     // Check store status on page load
     fetch('/api/store-status')
