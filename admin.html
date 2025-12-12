@@ -25,7 +25,7 @@
                 <button class="admin-btn view-esr-jpgs-btn">View Shift Summary</button>
                 <button class="admin-btn manage-employees-btn">Manage EMployees</button>
                 <button class="admin-btn logout-btn">Logout</button>
-                <button class="admin-btn auto-oc-btn">Auto O/C</button>
+
             </div>
             <div class="end-shift-container">
                 <button class="admin-btn end-shift-btn" style="background-color: red; color: white;">End Shift</button>
@@ -39,54 +39,17 @@
     <footer>
         <p>Made with ❤️ By <a href="https://www.instagram.com/yochxn.__/" target="_blank">Yochan</a></p>
     </footer>
-    <!-- Auto O/C Popup Modal -->
-    <div id="auto-oc-modal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>Auto Open/Close Settings</h2>
-            <form id="auto-oc-form">
-                <div class="form-group">
-                    <label>Open Store Time:</label>
-                    <div class="input-row">
-                        <div class="time-inputs">
-                            <input type="number" id="open-hours" name="open-hours" min="1" max="12" placeholder="HH" required>
-                            <span>:</span>
-                            <input type="number" id="open-minutes" name="open-minutes" min="0" max="59" placeholder="MM" required>
-                            <select id="open-ampm" name="open-ampm" required>
-                                <option value="AM">AM</option>
-                                <option value="PM">PM</option>
-                            </select>
-                        </div>
-                        <div class="checkbox-container">
-                            <input type="checkbox" id="enable-open" name="enable-open" checked>
-                            <label for="enable-open">Enable Auto Open</label>
-                        </div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Close Store Time:</label>
-                    <div class="input-row">
-                        <div class="time-inputs">
-                            <input type="number" id="close-hours" name="close-hours" min="1" max="12" placeholder="HH" required>
-                            <span>:</span>
-                            <input type="number" id="close-minutes" name="close-minutes" min="0" max="59" placeholder="MM" required>
-                            <select id="close-ampm" name="close-ampm" required>
-                                <option value="AM">AM</option>
-                                <option value="PM">PM</option>
-                            </select>
-                        </div>
-                        <div class="checkbox-container">
-                            <input type="checkbox" id="enable-close" name="enable-close" checked>
-                            <label for="enable-close">Enable Auto Close</label>
-                        </div>
-                    </div>
-                </div>
-                <button type="submit" class="submit-btn">Save Settings</button>
-            </form>
-            <div class="modal-notes">
-                <p class="note">This setting will work daily. Please add proper data. Wrong data may lead to improper timed open and close.</p>
 
-                <p class="note">Note: The data will be stored before performing auto close.</p>
+
+    <!-- Update Warning Modal -->
+    <div id="update-warning-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="update-warning-close">&times;</span>
+            <h2>Warning: Update Application</h2>
+            <p>On confirm, the application update process will start. This may lead to server shutdown for a while and restart after update. Make sure not to do any action while update is in progress.</p>
+            <div class="modal-buttons">
+                <button id="confirm-update-btn" class="submit-btn">Confirm</button>
+                <button id="cancel-update-btn" class="cancel-btn">Cancel</button>
             </div>
         </div>
     </div>
@@ -136,7 +99,19 @@
                         <option value="">Loading employees...</option>
                     </select>
                 </div>
-                <button type="submit" class="submit-btn">View ESR JPGs</button>
+                <div class="form-group">
+                    <label for="esr-jpg-date-select">Select Date:</label>
+                    <select id="esr-jpg-date-select" name="esr-jpg-date-select" required>
+                        <option value="">Select employee first</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="esr-jpg-shift-id-select">Choose Shift ID:</label>
+                    <select id="esr-jpg-shift-id-select" name="esr-jpg-shift-id-select" required>
+                        <option value="">Select date first</option>
+                    </select>
+                </div>
+                <button type="submit" class="submit-btn">View Shift Summary</button>
             </form>
         </div>
     </div>
@@ -155,6 +130,23 @@
             </div>
             <div id="esr-jpgs-grid" class="jpg-grid">
                 <!-- JPGs will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Update Progress Modal -->
+    <div id="update-progress-modal" class="modal">
+        <div class="modal-content">
+            <h2>System Update in Progress</h2>
+            <p>The system is under update. Please wait for the update to complete.</p>
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+                <div class="progress-text">
+                    <span id="progress-percentage">0%</span>
+                    <span id="remaining-time">Time remaining: Calculating...</span>
+                </div>
             </div>
         </div>
     </div>

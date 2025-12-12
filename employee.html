@@ -101,6 +101,46 @@
                 alert('An error occurred while verifying OTP.');
             }
         }
+
+        // Function to check update status and show modal if in progress
+        const checkUpdateStatus = () => {
+            fetch('/api/update-status')
+                .then(response => response.json())
+                .then(status => {
+                    const modal = document.getElementById('update-progress-modal');
+                    const progressFill = document.getElementById('progress-fill');
+                    const progressPercentage = document.getElementById('progress-percentage');
+                    const remainingTime = document.getElementById('remaining-time');
+
+                    if (status.updateInProgress) {
+                        modal.style.display = 'block';
+
+                        // Calculate progress (assume 2 minutes total)
+                        const startTime = new Date(status.updateStartTime);
+                        const now = new Date();
+                        const elapsed = (now - startTime) / 1000; // seconds
+                        const totalTime = 120; // 2 minutes
+                        const progress = Math.min((elapsed / totalTime) * 100, 100);
+
+                        progressFill.style.width = progress + '%';
+                        progressPercentage.textContent = Math.round(progress) + '%';
+
+                        const remaining = Math.max(totalTime - elapsed, 0);
+                        const minutes = Math.floor(remaining / 60);
+                        const seconds = Math.floor(remaining % 60);
+                        remainingTime.textContent = `Time remaining: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+                    } else {
+                        modal.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking update status:', error);
+                });
+        };
+
+        // Check update status on page load and every 5 seconds
+        checkUpdateStatus();
+        setInterval(checkUpdateStatus, 5000);
     </script>
 </body>
 </html>

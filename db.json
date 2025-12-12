@@ -37,6 +37,40 @@
           "shiftStartTime": "2025-11-30T11:18:45.576Z",
           "shiftEndTime": "2025-11-30T11:19:30.593Z",
           "timestamp": "2025-11-30T11:18:45.576Z"
+        },
+        {
+          "id": "qRD7ZiPfD",
+          "counter": "Counter 1",
+          "pineLabValue": "5050",
+          "shiftStartTime": "2025-12-08T14:10:00.000Z",
+          "shiftEndTime": "2025-12-08T14:38:52.565Z",
+          "timestamp": "2025-12-08T14:10:00.000Z"
+        },
+        {
+          "id": "8j7cEjU-R",
+          "counter": "Counter 2",
+          "pineLabValue": null,
+          "shiftStartTime": "2025-12-08T14:39:53.068Z",
+          "shiftEndTime": "2025-12-08T14:41:05.402Z",
+          "timestamp": "2025-12-08T14:39:53.068Z"
+        },
+        {
+          "id": "CseqgRjCg",
+          "shiftId": "1",
+          "counter": "Counter 1",
+          "pineLabValue": "852",
+          "shiftStartTime": "2025-12-09T14:40:55.865Z",
+          "shiftEndTime": null,
+          "timestamp": "2025-12-09T14:40:55.865Z"
+        },
+        {
+          "id": "Fp0sGG8_G",
+          "shiftId": "2",
+          "counter": "Counter 1",
+          "pineLabValue": "852",
+          "shiftStartTime": "2025-12-10T12:27:53.298Z",
+          "shiftEndTime": "2025-12-10T12:28:40.403Z",
+          "timestamp": "2025-12-10T12:27:53.298Z"
         }
       ],
       "extra": [
@@ -47,6 +81,22 @@
           "extraAmount": "3434",
           "modeOfPay": "Upi Paytm",
           "timestamp": "2025-11-30T11:18:54.199Z"
+        },
+        {
+          "id": "YKgSBgJKE",
+          "itemName": "veg ",
+          "billNumber": "CE",
+          "extraAmount": "60",
+          "modeOfPay": "Card Paytm",
+          "timestamp": "2025-12-08T14:40:16.474Z"
+        },
+        {
+          "id": "6N4yAAQmI",
+          "itemName": "test1",
+          "billNumber": "345",
+          "extraAmount": "50",
+          "modeOfPay": "Cash",
+          "timestamp": "2025-12-10T12:28:08.303Z"
         }
       ],
       "delivery": [
@@ -58,6 +108,15 @@
           "totalAmount": "23456io",
           "modeOfPay": "Card Pinelab",
           "timestamp": "2025-11-30T11:19:01.607Z"
+        },
+        {
+          "id": "sHtYt5eo2",
+          "billNumber": "23456",
+          "amount": "2777",
+          "extraAmount": 0,
+          "totalAmount": "2777",
+          "modeOfPay": "Upi Pinelab",
+          "timestamp": "2025-12-10T12:28:18.710Z"
         }
       ],
       "bill_paid": [
@@ -75,11 +134,14 @@
           "issueDescription": "wrwerfgh",
           "timestamp": "2025-11-30T11:19:17.758Z"
         }
-      ]
+      ],
+      "startShiftTime": "2025-12-09T14:40:51.835Z"
     }
   ],
   "auto_oc_settings": {
     "open_time": null,
     "close_time": null
-  }
+  },
+  "startShiftTime": "2025-12-08T14:35:06.176Z",
+  "nextShiftId": 3
 }
