@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateContainer = document.querySelector('.update-container');
     const endShiftBtn = document.querySelector('.end-shift-btn');
     const startShiftBtn = document.querySelector('.start-shift-btn');
-    const autoOcBtn = document.querySelector('.auto-oc-btn');
+
 
     // Function to check for updates
     const checkForUpdates = () => {
@@ -33,6 +33,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Update button click handler
     updateBtn.addEventListener('click', () => {
+        const warningModal = document.getElementById('update-warning-modal');
+        warningModal.style.display = 'block';
+
+        // Handle confirm button
+        const confirmBtn = document.getElementById('confirm-update-btn');
+        confirmBtn.onclick = () => {
+            warningModal.style.display = 'none';
+            showUpdateDetailsModal();
+        };
+
+        // Handle cancel button
+        const cancelBtn = document.getElementById('cancel-update-btn');
+        cancelBtn.onclick = () => {
+            warningModal.style.display = 'none';
+        };
+    });
+
+    // Function to show update details modal
+    const showUpdateDetailsModal = () => {
         const modal = document.getElementById('update-details-modal');
         const content = document.getElementById('update-details-content');
         const proceedBtn = document.getElementById('proceed-update-btn');
@@ -45,8 +64,9 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(response => response.json())
             .then(data => {
                 if (data.details) {
-                    const detailsHtml = data.details.split('\n').map(line => `<p>${line}</p>`).join('');
-                    content.innerHTML = `<h3>What's New in This Update:</h3>${detailsHtml}`;
+                    const detailsLines = data.details.split('\n').filter(line => line.trim() !== '');
+                    const latestUpdate = detailsLines[0] || 'No update details available.';
+                    content.innerHTML = `<h3>Latest Update:</h3><p>${latestUpdate}</p>`;
                 } else {
                     content.innerHTML = '<p>Unable to fetch update details. Proceed with update anyway?</p>';
                 }
@@ -59,27 +79,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Handle proceed button
         proceedBtn.onclick = () => {
             modal.style.display = 'none';
-            fetch('/api/update-app', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({})
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Update successful: ' + data.message);
-                    // Optionally reload the page or redirect
-                    window.location.reload();
-                } else {
-                    alert('Update failed: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error updating app:', error);
-                alert('Error updating app.');
-            });
+            showUpdateProgressModal();
         };
-    });
+    };
 
     // Close update details modal
     const updateDetailsClose = document.getElementById('update-details-close');
@@ -90,11 +92,24 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Close update warning modal
+    const updateWarningClose = document.getElementById('update-warning-close');
+    if (updateWarningClose) {
+        updateWarningClose.addEventListener('click', () => {
+            const modal = document.getElementById('update-warning-modal');
+            modal.style.display = 'none';
+        });
+    }
+
     // Close update details modal when clicking outside
     window.addEventListener('click', (event) => {
         const modal = document.getElementById('update-details-modal');
         if (event.target === modal) {
             modal.style.display = 'none';
+        }
+        const warningModal = document.getElementById('update-warning-modal');
+        if (event.target === warningModal) {
+            warningModal.style.display = 'none';
         }
     });
 
@@ -147,6 +162,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Error fetching employees:', error);
                 alert('Error loading employees.');
             });
+
+        // Reset date and shift ID selects
+        document.getElementById('esr-jpg-date-select').innerHTML = '<option value="">Select employee first</option>';
+        document.getElementById('esr-jpg-shift-id-select').innerHTML = '<option value="">Select date first</option>';
     });
 
     manageEmployeesBtn.addEventListener('click', () => {
@@ -247,47 +266,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    autoOcBtn.addEventListener('click', () => {
-        const modal = document.getElementById('auto-oc-modal');
-        modal.style.display = 'block';
 
-        // Fetch current settings
-        fetch('/api/auto-oc-settings')
-            .then(response => response.json())
-            .then(settings => {
-                if (settings.open_time) {
-                    const [openHours24, openMinutes] = settings.open_time.split(':');
-                    const openH24 = parseInt(openHours24);
-                    const openH12 = openH24 % 12 || 12;
-                    const openAmpm = openH24 >= 12 ? 'PM' : 'AM';
-                    document.getElementById('open-hours').value = openH12;
-                    document.getElementById('open-minutes').value = parseInt(openMinutes);
-                    document.getElementById('open-ampm').value = openAmpm;
-                }
-                if (settings.close_time) {
-                    const [closeHours24, closeMinutes] = settings.close_time.split(':');
-                    const closeH24 = parseInt(closeHours24);
-                    const closeH12 = closeH24 % 12 || 12;
-                    const closeAmpm = closeH24 >= 12 ? 'PM' : 'AM';
-                    document.getElementById('close-hours').value = closeH12;
-                    document.getElementById('close-minutes').value = parseInt(closeMinutes);
-                    document.getElementById('close-ampm').value = closeAmpm;
-                }
-                // Set enable checkboxes
-                document.getElementById('enable-open').checked = settings.enable_open !== false;
-                document.getElementById('enable-close').checked = settings.enable_close !== false;
-            })
-            .catch(error => {
-                console.error('Error loading settings:', error);
-            });
-    });
 
     // Close modal when clicking the close button
     const closeBtn = document.querySelector('.close');
     if (closeBtn) {
         closeBtn.addEventListener('click', () => {
-            const modal = document.getElementById('auto-oc-modal');
-            modal.style.display = 'none';
+            // No auto-oc-modal to close
         });
     }
 
@@ -338,59 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Handle Auto O/C form submission
-    const autoOcForm = document.getElementById('auto-oc-form');
-    if (autoOcForm) {
-        autoOcForm.addEventListener('submit', (event) => {
-            event.preventDefault();
 
-            const enableOpen = document.getElementById('enable-open').checked;
-            const enableClose = document.getElementById('enable-close').checked;
-            const openHours = document.getElementById('open-hours').value;
-            const openMinutes = document.getElementById('open-minutes').value;
-            const openAmpm = document.getElementById('open-ampm').value;
-            const closeHours = document.getElementById('close-hours').value;
-            const closeMinutes = document.getElementById('close-minutes').value;
-            const closeAmpm = document.getElementById('close-ampm').value;
-
-            // Validate inputs
-            if (!openHours || !openMinutes || !closeHours || !closeMinutes) {
-                alert('Please fill in all time fields.');
-                return;
-            }
-
-            // Send to server
-            fetch('/api/auto-oc-settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    enable_open: enableOpen,
-                    enable_close: enableClose,
-                    open_hours: openHours,
-                    open_minutes: openMinutes,
-                    open_ampm: openAmpm,
-                    close_hours: closeHours,
-                    close_minutes: closeMinutes,
-                    close_ampm: closeAmpm
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Auto Open/Close settings saved successfully!');
-                    // Close modal
-                    const modal = document.getElementById('auto-oc-modal');
-                    modal.style.display = 'none';
-                } else {
-                    alert('Error saving settings: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error saving settings:', error);
-                alert('Error saving settings.');
-            });
-        });
-    }
 
     // Handle employee selection form submission
     const employeeSelectionForm = document.getElementById('employee-selection-form');
@@ -462,6 +395,78 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     };
 
+    // Handle ESR JPG employee select change to populate dates
+    const esrJpgEmployeeSelect = document.getElementById('esr-jpg-employee-select');
+    if (esrJpgEmployeeSelect) {
+        esrJpgEmployeeSelect.addEventListener('change', () => {
+            const selectedEmployeeId = esrJpgEmployeeSelect.value;
+            if (!selectedEmployeeId) {
+                document.getElementById('esr-jpg-date-select').innerHTML = '<option value="">Select employee first</option>';
+                document.getElementById('esr-jpg-shift-id-select').innerHTML = '<option value="">Select date first</option>';
+                return;
+            }
+
+            // Fetch ESR JPGs for the selected employee to get available dates
+            fetch(`/api/esr-jpgs?employeeId=${selectedEmployeeId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.jpgs && data.jpgs.length > 0) {
+                        const dateSelect = document.getElementById('esr-jpg-date-select');
+                        dateSelect.innerHTML = '<option value="">Select a date</option>';
+                        const uniqueDates = [...new Set(data.jpgs.map(jpg => jpg.date))].sort();
+                        uniqueDates.forEach(date => {
+                            const option = document.createElement('option');
+                            option.value = date;
+                            option.textContent = date;
+                            dateSelect.appendChild(option);
+                        });
+                    } else {
+                        document.getElementById('esr-jpg-date-select').innerHTML = '<option value="">No dates available</option>';
+                    }
+                    document.getElementById('esr-jpg-shift-id-select').innerHTML = '<option value="">Select date first</option>';
+                })
+                .catch(error => {
+                    console.error('Error fetching ESR JPGs for dates:', error);
+                    alert('Error loading dates.');
+                });
+        });
+    }
+
+    // Handle ESR JPG date select change to populate shift IDs
+    const esrJpgDateSelect = document.getElementById('esr-jpg-date-select');
+    if (esrJpgDateSelect) {
+        esrJpgDateSelect.addEventListener('change', () => {
+            const selectedEmployeeId = document.getElementById('esr-jpg-employee-select').value;
+            const selectedDate = esrJpgDateSelect.value;
+            if (!selectedEmployeeId || !selectedDate) {
+                document.getElementById('esr-jpg-shift-id-select').innerHTML = '<option value="">Select date first</option>';
+                return;
+            }
+
+            // Fetch ESR JPGs for the selected employee and date to get available shift IDs
+            fetch(`/api/esr-jpgs?employeeId=${selectedEmployeeId}&date=${selectedDate}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.jpgs && data.jpgs.length > 0) {
+                        const shiftIdSelect = document.getElementById('esr-jpg-shift-id-select');
+                        shiftIdSelect.innerHTML = '<option value="">Select a shift ID</option>';
+                        data.jpgs.forEach(jpg => {
+                            const option = document.createElement('option');
+                            option.value = jpg.id;
+                            option.textContent = jpg.shift_id || 'N/A';
+                            shiftIdSelect.appendChild(option);
+                        });
+                    } else {
+                        document.getElementById('esr-jpg-shift-id-select').innerHTML = '<option value="">No shift IDs available</option>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching ESR JPGs for shift IDs:', error);
+                    alert('Error loading shift IDs.');
+                });
+        });
+    }
+
     // Handle ESR JPG employee selection form submission
     const esrJpgEmployeeSelectionForm = document.getElementById('esr-jpg-employee-selection-form');
     if (esrJpgEmployeeSelectionForm) {
@@ -469,15 +474,53 @@ document.addEventListener('DOMContentLoaded', () => {
             event.preventDefault();
 
             const selectedEmployeeId = document.getElementById('esr-jpg-employee-select').value;
+            const selectedDate = document.getElementById('esr-jpg-date-select').value;
+            const selectedShiftId = document.getElementById('esr-jpg-shift-id-select').value;
             if (!selectedEmployeeId) {
                 alert('Please select an employee.');
                 return;
             }
+            if (!selectedDate) {
+                alert('Please select a date.');
+                return;
+            }
+            if (!selectedShiftId) {
+                alert('Please select a shift ID.');
+                return;
+            }
 
-            currentEmployeeId = selectedEmployeeId;
+            // Fetch and display the specific ESR JPG
+            fetch(`/api/esr-jpgs?employeeId=${selectedEmployeeId}&date=${selectedDate}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.jpgs && data.jpgs.length > 0) {
+                        const jpg = data.jpgs.find(j => j.id == selectedShiftId);
+                        if (jpg) {
+                            const grid = document.getElementById('esr-jpgs-grid');
+                            grid.innerHTML = '';
+                            const imageUrl = `data:image/jpeg;base64,${jpg.jpgData}`;
+                            const item = document.createElement('div');
+                            item.className = 'jpg-item';
+                            item.innerHTML = `
+                                <img src="${imageUrl}" alt="ESR JPG" onclick="window.open('${imageUrl}', '_blank')">
+                                <div class="date">${jpg.date} - Shift ID: ${jpg.shift_id}</div>
+                            `;
+                            grid.appendChild(item);
 
-            // Fetch ESR JPGs for the selected employee
-            fetchAndDisplayEsrJpgs(selectedEmployeeId);
+                            // Show the JPGs modal
+                            const jpgsModal = document.getElementById('esr-jpgs-modal');
+                            jpgsModal.style.display = 'block';
+                        } else {
+                            alert('Selected shift ID not found.');
+                        }
+                    } else {
+                        alert('No ESR JPG found for the selected criteria.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching ESR JPG:', error);
+                    alert('Error loading ESR JPG.');
+                });
 
             // Close the employee selection modal
             const modal = document.getElementById('esr-jpg-employee-selection-modal');
@@ -512,4 +555,74 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchAndDisplayEsrJpgs(currentEmployeeId);
         });
     }
+
+    // Function to show update progress modal
+    const showUpdateProgressModal = () => {
+        const modal = document.getElementById('update-progress-modal');
+        const progressFill = document.getElementById('progress-fill');
+        const progressPercentage = document.getElementById('progress-percentage');
+        const remainingTime = document.getElementById('remaining-time');
+
+        modal.style.display = 'block';
+        progressFill.style.width = '0%';
+        progressPercentage.textContent = '0%';
+        remainingTime.textContent = 'Time remaining: Calculating...';
+
+        // Start the update
+        fetch('/api/update-app', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                alert('Update failed: ' + data.message);
+                modal.style.display = 'none';
+                return;
+            }
+
+            // Poll for update status
+            const pollInterval = setInterval(() => {
+                fetch('/api/update-status')
+                    .then(response => response.json())
+                    .then(status => {
+                        if (!status.updateInProgress) {
+                            clearInterval(pollInterval);
+                            modal.style.display = 'none';
+                            alert('Update completed successfully!');
+                            window.location.reload();
+                            return;
+                        }
+
+                        // Calculate progress (assume 2 minutes total)
+                        const startTime = new Date(status.updateStartTime);
+                        const now = new Date();
+                        const elapsed = (now - startTime) / 1000; // seconds
+                        const totalTime = 120; // 2 minutes
+                        const progress = (elapsed / totalTime) * 100;
+
+                        progressFill.style.width = Math.min(progress, 100) + '%';
+                        progressPercentage.textContent = Math.round(Math.min(progress, 100)) + '%';
+
+                        if (progress >= 100) {
+                            remainingTime.textContent = 'Update in progress...';
+                        } else {
+                            const remaining = Math.max(totalTime - elapsed, 0);
+                            const minutes = Math.floor(remaining / 60);
+                            const seconds = Math.floor(remaining % 60);
+                            remainingTime.textContent = `Time remaining: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error polling update status:', error);
+                    });
+            }, 1000); // Poll every second
+        })
+        .catch(error => {
+            console.error('Error starting update:', error);
+            alert('Error starting update.');
+            modal.style.display = 'none';
+        });
+    };
 });

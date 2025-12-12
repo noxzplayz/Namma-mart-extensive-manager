@@ -13,7 +13,7 @@ const adapter = new FileSync('db.json');
 const db = low(adapter);
 
 // Set up the database defaults
-db.defaults({ store_closed: false, employees: [], auto_oc_settings: { open_time: null, close_time: null } }).write();
+db.defaults({ store_closed: false, employees: [], nextShiftId: 1 }).write();
 
 // Set up SQLite database for ESR JPGs
 const esrDb = new Database('esrjpg.db');
@@ -22,11 +22,18 @@ esrDb.exec(`
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         employee_id TEXT NOT NULL,
         date TEXT NOT NULL,
+        shift_id TEXT NOT NULL,
         jpg_data BLOB NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(employee_id, date)
+        UNIQUE(employee_id, date, shift_id)
     );
 `);
+// Add shift_id column if not exists (for existing databases)
+try {
+    esrDb.exec(`ALTER TABLE esr_jpgs ADD COLUMN shift_id TEXT;`);
+} catch (error) {
+    // Ignore if column already exists
+}
 
 const app = express();
 const port = 3000;
@@ -62,12 +69,14 @@ let employeeEndShiftOtp = {
     employeeId: null
 };
 
-// Simple in-memory OTP store for admin approval for employee relogin
-let adminApprovalOtp = {
-    otp: null,
-    expiresAt: 0,
-    employeeId: null
-};
+// Update progress tracking
+let updateInProgress = false;
+let updateStartTime = null;
+
+// Admin approval OTP functionality removed - employees can login directly
+
+// Test close flag
+let testCloseDone = false;
 
 // Handle login requests
 app.post('/login', async (req, res) => {
@@ -86,49 +95,17 @@ app.post('/login', async (req, res) => {
 
     if (employee && bcrypt.compareSync(password, employee.password)) {
         if (employee.shiftEnded) {
-            // Generate admin approval OTP
-            const otp = Math.floor(10000 + Math.random() * 90000).toString();
-            adminApprovalOtp.otp = otp;
-            adminApprovalOtp.expiresAt = Date.now() + 5 * 60 * 1000; // valid for 5 minutes
-            adminApprovalOtp.employeeId = employee.id;
+            // Directly reset shiftEnded and set startShiftTime for new shift
+            db.get('employees').find({ id: employee.id }).assign({ shiftEnded: false, startShiftTime: new Date().toISOString() }).write();
+        }
 
-            // Send OTP to admin email
-            const mailOptions = {
-                from: emailConfig.from,
-                to: emailConfig.recipients.filter(Boolean).join(','),
-                subject: 'Namma Mart - Employee Shift Start Approval OTP',
-                text: `Employee ${employee.name} (${employee.username}) is requesting to start a new shift. Approval OTP: ${otp}. Valid for 5 minutes.`
-            };
-
-            // If request is from localhost, return the OTP in the response for debugging convenience
-            const ip = (req.ip || '').toString();
-            const isLocal = ip === '::1' || ip === '127.0.0.1' || ip.startsWith('::ffff:127.0.0.1') || req.hostname === 'localhost';
-
-            const responseBody = { success: false, requiresAdminApproval: true, message: 'Admin approval required to start new shift. OTP sent to admin email.', employeeId: employee.id };
-
-            try {
-                await emailConfig.transporter.sendMail(mailOptions);
-            } catch (err) {
-                console.error('Error sending admin approval OTP email:', err);
-                // For localhost, still allow OTP entry even if email fails
-                if (!isLocal) {
-                    // Clear OTP on failure for non-local
-                    adminApprovalOtp.otp = null;
-                    adminApprovalOtp.expiresAt = 0;
-                    adminApprovalOtp.employeeId = null;
-                    return res.status(500).json({ success: false, message: 'Failed to send admin approval OTP.' });
-                }
-            }
-
-            return res.json(responseBody);
-    } else {
-            // Check if there is an active shift (counter_selection with shiftEndTime null)
-            const activeShift = employee.counter_selections && employee.counter_selections.some(sel => !sel.shiftEndTime);
-            if (activeShift) {
-                res.json({ success: true, redirectUrl: '/employee.html', employeeId: employee.id });
-            } else {
-                res.json({ success: true, redirectUrl: '/counter_selection.html', employeeId: employee.id });
-            }
+        // Check if there is an active shift today (counter_selection with shiftEndTime null and shiftStartTime is today)
+        const today = new Date().toISOString().split('T')[0];
+        const activeShift = employee.counter_selections && employee.counter_selections.some(sel => !sel.shiftEndTime && sel.shiftStartTime && sel.shiftStartTime.startsWith(today));
+        if (activeShift) {
+            res.json({ success: true, redirectUrl: '/employee.html', employeeId: employee.id });
+        } else {
+            res.json({ success: true, redirectUrl: '/counter_selection.html', employeeId: employee.id });
         }
     } else {
         res.status(401).json({ success: false, message: 'Invalid credentials.' });
@@ -207,7 +184,7 @@ app.put('/api/employees/:id', (req, res) => {
     res.json({ success: true, message: 'Employee updated successfully.' });
 });
 
-// Handle counter selection data submission
+// Handle counter selection data submission (FIXED SHIFT START)
 app.post('/api/counter-selection', (req, res) => {
     const { employeeId, counter, pineLabValue, timestamp } = req.body;
 
@@ -216,25 +193,36 @@ app.post('/api/counter-selection', (req, res) => {
         return res.status(404).json({ success: false, message: 'Employee not found.' });
     }
 
-    // Initialize counter_selection array if not exists
-    if (!employee.counter_selections) {
-        employee.counter_selections = [];
-    }
+    // Ensure counter_selections exists
+    let selections = employee.counter_selections || [];
 
-    // Add the counter selection data
-    employee.counter_selections.push({
+    // Generate shift ID (safe, sequential)
+    const shiftId = db.get('nextShiftId').value();
+    db.set('nextShiftId', shiftId + 1).write();
+
+    // Create new shift entry
+    const newShift = {
         id: shortid.generate(),
+        shiftId: shiftId.toString(),
         counter,
         pineLabValue,
-        shiftStartTime: timestamp, // record start time
-        shiftEndTime: null, // initialize end time
-        timestamp, // original timestamp for record creation
-    });
+        shiftStartTime: timestamp,
+        shiftEndTime: null,
+        timestamp,
+    };
 
-    db.get('employees').find({ id: employeeId }).assign(employee).write();
+    // Push safely
+    selections.push(newShift);
 
-    res.json({ success: true, message: 'Counter selection saved successfully.' });
+    // Save back properly (THIS is the part your original code broke)
+    db.get('employees')
+        .find({ id: employeeId })
+        .assign({ counter_selections: selections, shiftEnded: false })
+        .write();
+
+    return res.json({ success: true, message: 'Shift started successfully.' });
 });
+
 // Handle extra data submission
 app.post('/api/extra', (req, res) => {
     const extraData = req.body;
@@ -282,14 +270,22 @@ app.get('/api/extra', (req, res) => {
                     return parsed.toISOString().split('T')[0] === date;
                 });
             }
-            if (shiftStartTime && shiftEndTime) {
+            if (shiftStartTime) {
                 const start = new Date(shiftStartTime);
-                const end = new Date(shiftEndTime);
-                if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+                if (!isNaN(start.getTime())) {
                     data = data.filter(item => {
                         const ts = new Date(item.timestamp);
-                        return ts >= start && ts <= end;
+                        return ts >= start;
                     });
+                    if (shiftEndTime) {
+                        const end = new Date(shiftEndTime);
+                        if (!isNaN(end.getTime())) {
+                            data = data.filter(item => {
+                                const ts = new Date(item.timestamp);
+                                return ts <= end;
+                            });
+                        }
+                    }
                 }
             }
             res.json(data);
@@ -347,14 +343,22 @@ app.get('/api/delivery', (req, res) => {
                     return parsed.toISOString().split('T')[0] === date;
                 });
             }
-            if (shiftStartTime && shiftEndTime) {
+            if (shiftStartTime) {
                 const start = new Date(shiftStartTime);
-                const end = new Date(shiftEndTime);
-                if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+                if (!isNaN(start.getTime())) {
                     data = data.filter(item => {
                         const ts = new Date(item.timestamp);
-                        return ts >= start && ts <= end;
+                        return ts >= start;
                     });
+                    if (shiftEndTime) {
+                        const end = new Date(shiftEndTime);
+                        if (!isNaN(end.getTime())) {
+                            data = data.filter(item => {
+                                const ts = new Date(item.timestamp);
+                                return ts <= end;
+                            });
+                        }
+                    }
                 }
             }
             res.json(data);
@@ -409,14 +413,22 @@ app.get('/api/bill_paid', (req, res) => {
                     return parsed.toISOString().split('T')[0] === date;
                 });
             }
-            if (shiftStartTime && shiftEndTime) {
+            if (shiftStartTime) {
                 const start = new Date(shiftStartTime);
-                const end = new Date(shiftEndTime);
-                if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+                if (!isNaN(start.getTime())) {
                     data = data.filter(item => {
                         const ts = new Date(item.timestamp);
-                        return ts >= start && ts <= end;
+                        return ts >= start;
                     });
+                    if (shiftEndTime) {
+                        const end = new Date(shiftEndTime);
+                        if (!isNaN(end.getTime())) {
+                            data = data.filter(item => {
+                                const ts = new Date(item.timestamp);
+                                return ts <= end;
+                            });
+                        }
+                    }
                 }
             }
             res.json(data);
@@ -471,14 +483,22 @@ app.get('/api/issue', (req, res) => {
                     return parsed.toISOString().split('T')[0] === date;
                 });
             }
-            if (shiftStartTime && shiftEndTime) {
+            if (shiftStartTime) {
                 const start = new Date(shiftStartTime);
-                const end = new Date(shiftEndTime);
-                if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+                if (!isNaN(start.getTime())) {
                     data = data.filter(item => {
                         const ts = new Date(item.timestamp);
-                        return ts >= start && ts <= end;
+                        return ts >= start;
                     });
+                    if (shiftEndTime) {
+                        const end = new Date(shiftEndTime);
+                        if (!isNaN(end.getTime())) {
+                            data = data.filter(item => {
+                                const ts = new Date(item.timestamp);
+                                return ts <= end;
+                            });
+                        }
+                    }
                 }
             }
             res.json(data);
@@ -534,14 +554,22 @@ app.post('/api/retail_credit', (req, res) => {
                      return parsed.toISOString().split('T')[0] === date;
                  });
              }
-             if (shiftStartTime && shiftEndTime) {
+             if (shiftStartTime) {
                  const start = new Date(shiftStartTime);
-                 const end = new Date(shiftEndTime);
-                 if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+                 if (!isNaN(start.getTime())) {
                      data = data.filter(item => {
                          const ts = new Date(item.timestamp);
-                         return ts >= start && ts <= end;
+                         return ts >= start;
                      });
+                     if (shiftEndTime) {
+                         const end = new Date(shiftEndTime);
+                         if (!isNaN(end.getTime())) {
+                             data = data.filter(item => {
+                                 const ts = new Date(item.timestamp);
+                                 return ts <= end;
+                             });
+                         }
+                     }
                  }
              }
              res.json(data);
@@ -570,14 +598,22 @@ app.post('/api/retail_credit', (req, res) => {
                      return parsed.toISOString().split('T')[0] === date;
                  });
              }
-             if (shiftStartTime && shiftEndTime) {
+             if (shiftStartTime) {
                  const start = new Date(shiftStartTime);
-                 const end = new Date(shiftEndTime);
-                 if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+                 if (!isNaN(start.getTime())) {
                      data = data.filter(item => {
                          const ts = new Date(item.timestamp);
-                         return ts >= start && ts <= end;
+                         return ts >= start;
                      });
+                     if (shiftEndTime) {
+                         const end = new Date(shiftEndTime);
+                         if (!isNaN(end.getTime())) {
+                             data = data.filter(item => {
+                                 const ts = new Date(item.timestamp);
+                                 return ts <= end;
+                             });
+                         }
+                     }
                  }
              }
              res.json(data);
@@ -722,15 +758,19 @@ app.post('/api/verify-employee-otp', async (req, res) => {
         await page.setViewport({ width: 1200, height: 800 }); // Set viewport for better rendering
         await page.goto(`http://localhost:${port}/end_shift_report.html?employeeId=${employeeId}&date=${date}`, { waitUntil: 'networkidle2' });
         await page.waitForSelector('#summary', { timeout: 10000 });
-        await page.waitForTimeout(5000); // Wait for async data loading and rendering
+        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for async data loading and rendering
         await page.waitForSelector('footer', { timeout: 10000 }); // Ensure footer is loaded
         const screenshot = await page.screenshot({ type: 'jpeg', fullPage: true });
         await browser.close();
         screenshotBuffer = screenshot; // Store buffer for email attachment
         const jpgData = screenshot.toString('base64');
-        const stmt = esrDb.prepare('INSERT OR REPLACE INTO esr_jpgs (employee_id, date, jpg_data) VALUES (?, ?, ?)');
-        stmt.run(employeeId, date, Buffer.from(jpgData, 'base64'));
-        console.log(`ESR JPG generated and saved for employee ${employeeId} on ${date}`);
+
+        // Get shift ID from the last shift
+        const shiftId = employeeForShiftEnd.counter_selections[lastShiftIndex].shiftId;
+
+        const stmt = esrDb.prepare('INSERT OR REPLACE INTO esr_jpgs (employee_id, date, shift_id, jpg_data) VALUES (?, ?, ?, ?)');
+        stmt.run(employeeId, date, shiftId, Buffer.from(jpgData, 'base64'));
+        console.log(`ESR JPG generated and saved for employee ${employeeId} on ${date} with shift ID ${shiftId}`);
     } catch (error) {
         console.error('Error generating ESR JPG:', error);
     }
@@ -880,42 +920,7 @@ app.get('/api/store-status', (req, res) => {
     res.json({ closed: db.get('store_closed').value() });
 });
 
-// Save auto open/close settings
-app.post('/api/auto-oc-settings', (req, res) => {
-    const { enable_open, enable_close, open_hours, open_minutes, open_ampm, close_hours, close_minutes, close_ampm } = req.body;
 
-    // Convert 12-hour to 24-hour format
-    const convertTo24Hour = (hours, ampm) => {
-        let h = parseInt(hours);
-        if (ampm === 'PM' && h !== 12) h += 12;
-        if (ampm === 'AM' && h === 12) h = 0;
-        return h;
-    };
-
-    const openTime24 = convertTo24Hour(open_hours, open_ampm);
-    const closeTime24 = convertTo24Hour(close_hours, close_ampm);
-
-    // Validate times (open should be before close) only if both are enabled
-    if (enable_open && enable_close && openTime24 >= closeTime24) {
-        return res.status(400).json({ success: false, message: 'Open time must be before close time.' });
-    }
-
-    // Save settings
-    db.set('auto_oc_settings', {
-        enable_open: enable_open,
-        enable_close: enable_close,
-        open_time: `${openTime24.toString().padStart(2, '0')}:${open_minutes.padStart(2, '0')}`,
-        close_time: `${closeTime24.toString().padStart(2, '0')}:${close_minutes.padStart(2, '0')}`
-    }).write();
-
-    res.json({ success: true, message: 'Auto open/close settings saved successfully.' });
-});
-
-// Get auto open/close settings
-app.get('/api/auto-oc-settings', (req, res) => {
-    const settings = db.get('auto_oc_settings').value();
-    res.json(settings);
-});
 
 // Update data entry
 app.put('/api/:type/:id', (req, res) => {
@@ -1210,16 +1215,213 @@ app.get('/api/todays-report-summary', (req, res) => {
 
 // Update app endpoint
 app.post('/api/update-app', (req, res) => {
-    const { exec } = require('child_process');
-    exec('./update.sh', (error, stdout, stderr) => {
-        if (error) {
-            console.error(`Update error: ${error}`);
-            return res.status(500).json({ success: false, message: 'Update failed: ' + error.message });
+    const { exec, spawn } = require('child_process');
+    const path = require('path');
+    const fs = require('fs');
+
+    updateInProgress = true;
+    updateStartTime = new Date();
+
+    // Function to get current branch
+    const getCurrentBranch = () => {
+        return new Promise((resolve, reject) => {
+            exec('git branch --show-current', (error, stdout) => {
+                if (error) {
+                    exec('git rev-parse --abbrev-ref HEAD', (error2, stdout2) => {
+                        if (error2) {
+                            resolve('main');
+                        } else {
+                            resolve(stdout2.trim());
+                        }
+                    });
+                } else {
+                    resolve(stdout.trim());
+                }
+            });
+        });
+    };
+
+    // Function to restart server
+    const restartServer = () => {
+        return new Promise((resolve, reject) => {
+            console.log('Checking for running server processes...');
+
+            // On Windows, use taskkill instead of pgrep/kill
+            const isWindows = process.platform === 'win32';
+            if (isWindows) {
+                exec('tasklist /FI "IMAGENAME eq node.exe" /FO CSV', (error, stdout) => {
+                    if (!error && stdout.includes('node.exe')) {
+                        console.log('Stopping existing server processes...');
+                        exec('taskkill /F /IM node.exe /FI "WINDOWTITLE eq Namma Mart*"', () => {
+                            setTimeout(() => {
+                                console.log('Starting server...');
+                                const serverProcess = spawn('node', ['server.js'], {
+                                    detached: true,
+                                    stdio: 'ignore'
+                                });
+                                serverProcess.unref();
+                                console.log('Server started in background');
+                                resolve();
+                            }, 2000);
+                        });
+                    } else {
+                        console.log('Starting server...');
+                        const serverProcess = spawn('node', ['server.js'], {
+                            detached: true,
+                            stdio: 'ignore'
+                        });
+                        serverProcess.unref();
+                        console.log('Server started in background');
+                        resolve();
+                    }
+                });
+            } else {
+                // Unix-like systems
+                exec('pgrep -f "node.*server.js"', (error, stdout) => {
+                    if (!error && stdout.trim()) {
+                        const pids = stdout.trim().split('\n');
+                        console.log('Stopping existing server processes:', pids.join(', '));
+                        exec(`kill ${pids.join(' ')}`, () => {
+                            setTimeout(() => {
+                                console.log('Starting server...');
+                                const serverProcess = spawn('node', ['server.js'], {
+                                    detached: true,
+                                    stdio: 'ignore'
+                                });
+                                serverProcess.unref();
+                                console.log('Server started in background');
+                                resolve();
+                            }, 2000);
+                        });
+                    } else {
+                        console.log('Starting server...');
+                        const serverProcess = spawn('node', ['server.js'], {
+                            detached: true,
+                            stdio: 'ignore'
+                        });
+                        serverProcess.unref();
+                        console.log('Server started in background');
+                        resolve();
+                    }
+                });
+            }
+        });
+    };
+
+    // Check if it's a Git repository
+    if (fs.existsSync(path.join(__dirname, '.git'))) {
+        console.log('Git repository detected. Checking for updates...');
+
+        getCurrentBranch().then(branch => {
+            console.log('Current branch:', branch);
+
+            // Fetch latest changes
+            console.log('Fetching latest changes...');
+            exec('git fetch origin', (error) => {
+                if (error) {
+                    updateInProgress = false;
+                    updateStartTime = null;
+                    console.error('Error: Failed to fetch from remote repository.');
+                    return res.status(500).json({ success: false, message: 'Update failed: Failed to fetch from remote repository.' });
+                }
+
+                // Check if there are updates
+                exec('git rev-parse HEAD', (error, localStdout) => {
+                    if (error) {
+                        updateInProgress = false;
+                        updateStartTime = null;
+                        return res.status(500).json({ success: false, message: 'Update failed: Could not get local commit.' });
+                    }
+
+                    const local = localStdout.trim();
+                    exec(`git rev-parse origin/${branch}`, (error, remoteStdout) => {
+                        let remote = remoteStdout ? remoteStdout.trim() : null;
+                        if (error || !remote) {
+                            // Try main or master
+                            exec('git rev-parse origin/main', (error2, remoteStdout2) => {
+                                if (error2) {
+                                    exec('git rev-parse origin/master', (error3, remoteStdout3) => {
+                                        remote = error3 ? null : remoteStdout3.trim();
+                                        checkForUpdates(local, remote, branch);
+                                    });
+                                } else {
+                                    remote = remoteStdout2.trim();
+                                    checkForUpdates(local, remote, branch);
+                                }
+                            });
+                        } else {
+                            checkForUpdates(local, remote, branch);
+                        }
+                    });
+                });
+            });
+        });
+    } else {
+        updateInProgress = false;
+        updateStartTime = null;
+        console.log('This directory is not a Git repository.');
+        return res.status(500).json({ success: false, message: 'Update failed: Not a Git repository. Please initialize Git and add remote origin.' });
+    }
+
+    function checkForUpdates(local, remote, branch) {
+        if (!remote || local === remote) {
+            updateInProgress = false;
+            updateStartTime = null;
+            console.log('No updates available. Application is up to date.');
+            return res.json({ success: true, message: 'No updates available. Application is up to date.' });
         }
-        console.log(`Update stdout: ${stdout}`);
-        if (stderr) console.error(`Update stderr: ${stderr}`);
-        res.json({ success: true, message: stdout });
-    });
+
+        console.log('Updates found. Pulling latest changes...');
+        exec(`git pull origin ${branch}`, (error, pullStdout) => {
+            if (error) {
+                updateInProgress = false;
+                updateStartTime = null;
+                console.error('Error: Failed to pull updates from remote repository.');
+                return res.status(500).json({ success: false, message: 'Update failed: Failed to pull updates from remote repository.' });
+            }
+
+            console.log('Update successful.');
+
+            // Check if package.json exists and run npm install
+            if (fs.existsSync(path.join(__dirname, 'package.json'))) {
+                console.log('Installing/updating dependencies...');
+                exec('npm install', (npmError) => {
+                    if (npmError) {
+                        console.log('Warning: Failed to install dependencies. Please run \'npm install\' manually.');
+                    }
+
+                    // Restart the server
+                    restartServer().then(() => {
+                        updateInProgress = false;
+                        updateStartTime = null;
+                        console.log('Update completed successfully!');
+                        res.json({ success: true, message: 'Update completed successfully! Application has been updated and restarted.' });
+                    }).catch(() => {
+                        updateInProgress = false;
+                        updateStartTime = null;
+                        res.json({ success: true, message: 'Update completed successfully! Please restart the server manually.' });
+                    });
+                });
+            } else {
+                // Restart the server
+                restartServer().then(() => {
+                    updateInProgress = false;
+                    updateStartTime = null;
+                    console.log('Update completed successfully!');
+                    res.json({ success: true, message: 'Update completed successfully! Application has been updated and restarted.' });
+                }).catch(() => {
+                    updateInProgress = false;
+                    updateStartTime = null;
+                    res.json({ success: true, message: 'Update completed successfully! Please restart the server manually.' });
+                });
+            }
+        });
+    }
+});
+
+// Get update status endpoint
+app.get('/api/update-status', (req, res) => {
+    res.json({ updateInProgress, updateStartTime });
 });
 
 // Check for updates endpoint
@@ -1248,76 +1450,7 @@ app.get('/api/update-details', (req, res) => {
     });
 });
 
-// Function to check and update store status based on auto open/close settings
-function checkAutoOpenClose() {
-    const settings = db.get('auto_oc_settings').value();
-    if (!settings || !settings.open_time || !settings.close_time) {
-        return; // No auto settings configured
-    }
 
-    const now = new Date();
-    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-
-    const openTime = settings.open_time;
-    const closeTime = settings.close_time;
-
-    // Calculate time 30 seconds before close time
-    const [closeHours, closeMinutes] = closeTime.split(':').map(Number);
-    const closeDateTime = new Date();
-    closeDateTime.setHours(closeHours, closeMinutes, 0, 0);
-    const thirtySecondsBeforeClose = new Date(closeDateTime.getTime() - 30 * 1000);
-    const thirtySecondsBeforeTime = `${thirtySecondsBeforeClose.getHours().toString().padStart(2, '0')}:${thirtySecondsBeforeClose.getMinutes().toString().padStart(2, '0')}`;
-
-    // Check if current time is between open and close
-    const isOpenTime = currentTime >= openTime && currentTime < closeTime;
-
-    const currentlyClosed = db.get('store_closed').value();
-
-    // Auto open if enabled and it's open time and store is closed
-    if (settings.enable_open && isOpenTime && currentlyClosed) {
-        const startShiftTime = new Date().toISOString();
-        db.set('store_closed', false).write();
-        db.set('startShiftTime', startShiftTime).write();
-        console.log(`Store automatically opened and admin shift started at ${currentTime}`);
-    }
-    // Auto save data 30 seconds before close if enabled and store is open
-    else if (settings.enable_close && currentTime === thirtySecondsBeforeTime && !currentlyClosed) {
-        // Force save all data to database
-        db.write();
-        console.log(`All data automatically saved to database 30 seconds before auto close at ${currentTime}`);
-    }
-    // Auto close if enabled and it's close time and store is open
-    else if (settings.enable_close && !isOpenTime && !currentlyClosed) {
-        // Automatically end all employee shifts and close store
-        const endShiftTime = new Date().toISOString();
-        const employees = db.get('employees').value();
-
-        employees.forEach(employee => {
-            if (employee && !employee.shiftEnded) {
-                // End the current shift for this employee
-                if (employee.counter_selections && employee.counter_selections.length > 0) {
-                    const today = new Date().toISOString().split('T')[0];
-                    const lastShiftIndex = employee.counter_selections.reduce((lastIndex, selection, currentIndex) => {
-                        if (selection.shiftStartTime && selection.shiftStartTime.startsWith(today)) {
-                            return currentIndex;
-                        }
-                        return lastIndex;
-                    }, -1);
-
-                    if (lastShiftIndex !== -1) {
-                        employee.counter_selections[lastShiftIndex].shiftEndTime = endShiftTime;
-                    }
-                }
-                employee.shiftEnded = true;
-            }
-        });
-
-        db.set('employees', employees).write();
-        db.set('store_closed', true).write();
-
-        console.log(`Store automatically closed and all employee shifts ended at ${currentTime}`);
-    }
-}
 
 // Get ESR JPGs for an employee
 app.get('/api/esr-jpgs', (req, res) => {
@@ -1372,8 +1505,26 @@ app.post('/api/save-esr-jpg', (req, res) => {
     }
 });
 
-// Run the auto check every minute
-setInterval(checkAutoOpenClose, 60 * 1000);
+// Scheduled auto open/close functionality
+function checkScheduledOpenClose(testHour = null, testMinute = null) {
+    const now = new Date();
+    const currentHour = testHour !== null ? testHour : now.getHours();
+    const currentMinute = testMinute !== null ? testMinute : now.getMinutes();
+
+    // Close at 11:30 PM
+    if (currentHour === 23 && currentMinute >= 30) {
+        db.set('store_closed', true).write();
+        console.log('Store automatically closed at 11:30 PM');
+    }
+    // Open at 5:00 AM
+    else if (currentHour === 5 && currentMinute >= 0) {
+        db.set('store_closed', false).write();
+        console.log('Store automatically opened at 5:00 AM');
+    }
+}
+
+// Run scheduled check every minute
+setInterval(checkScheduledOpenClose, 60 * 1000);
 
 app.listen(port, () => {
     console.log(`Server is running on http://localhost:${port}`);
@@ -1381,5 +1532,5 @@ app.listen(port, () => {
     console.log('Example: http://192.168.1.100:3000');
 
     // Run initial check on startup
-    checkAutoOpenClose();
+    checkScheduledOpenClose();
 });

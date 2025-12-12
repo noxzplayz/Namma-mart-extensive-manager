@@ -132,6 +132,28 @@
     background-color: #8a1bc7;
 }
 
+.modal-buttons {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 20px;
+}
+
+.cancel-btn {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.cancel-btn:hover {
+    background-color: #c82333;
+}
+
 .modal-notes {
     margin-top: 20px;
     padding-top: 15px;

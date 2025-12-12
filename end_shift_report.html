@@ -123,13 +123,13 @@
             return urlParams.get(param);
         }
 
-        async function fetchEmployeeName(employeeId) {
+        async function fetchEmployee(employeeId) {
             const response = await fetch(`/api/employees/${employeeId}`);
             if (response.ok) {
                 const employee = await response.json();
-                return employee.name || 'Unknown';
+                return employee;
             }
-            return 'Unknown';
+            return null;
         }
 
         async function fetchData(type, employeeId, date) {
@@ -221,7 +221,8 @@
 
             document.getElementById('shift-date').textContent = date;
 
-            const employeeName = await fetchEmployeeName(employeeId);
+            const employee = await fetchEmployee(employeeId);
+            const employeeName = employee ? employee.name || 'Unknown' : 'Unknown';
             document.getElementById('employee-name').textContent = employeeName;
 
             // Fetch counter data (shift start and end, counter, pine lab) for the date
@@ -233,8 +234,8 @@
             let pineLabValue = '';
 
             if (counterData.length > 0) {
-                // Assuming only one shift per day, take the first record
-                const shift = counterData[0];
+                // Take the last shift record for the day (most recent)
+                const shift = counterData[counterData.length - 1];
                 shiftStart = formatDateTime(shift.shiftStartTime);
                 shiftEnd = formatDateTime(shift.shiftEndTime);
                 counterNumber = shift.counter || '';
