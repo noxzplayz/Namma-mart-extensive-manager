@@ -172,6 +172,38 @@
         </div>
     </div>
 
+    <!-- ESR JPG Modal -->
+    <div id="esr-jpg-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center;">
+        <div style="background:white; padding:20px; border-radius:10px; text-align:center; max-width:90%; max-height:90%; overflow:auto;">
+            <h3>View ESR JPG</h3>
+            <label for="shift-id-select">Select Shift ID:</label>
+            <select id="shift-id-select"></select>
+            <br /><br />
+            <img id="esr-jpg-image" style="max-width:100%; max-height:70vh;" />
+            <br /><br />
+            <button onclick="closeEsrJpgModal()">Close</button>
+        </div>
+    </div>
+
+    <!-- Shift Summary Modal -->
+    <div id="shift-summary-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center;">
+        <div style="background:white; padding:20px; border-radius:10px; text-align:center;">
+            <h3>Select Date and Shift for Summary</h3>
+            <form id="shift-summary-form">
+                <label for="summary-date">Date:</label>
+                <input type="date" id="summary-date" required />
+                <br /><br />
+                <label for="summary-shift-id">Shift ID:</label>
+                <select id="summary-shift-id" required>
+                    <option value="">Select a shift</option>
+                </select>
+                <br /><br />
+                <button type="submit">View Summary</button>
+                <button type="button" onclick="closeShiftSummaryModal()">Close</button>
+            </form>
+        </div>
+    </div>
+
     <script>
         let selectedEmployeeId;
         let selectedDate;
@@ -320,6 +352,15 @@
                     buttonContainer.appendChild(button);
                 });
 
+                // Add Shift Summary button
+                const shiftSummaryBtn = document.createElement('button');
+                shiftSummaryBtn.className = 'employee-btn';
+                shiftSummaryBtn.textContent = 'View Shift Summary';
+                shiftSummaryBtn.addEventListener('click', () => {
+                    showShiftSummaryModal();
+                });
+                buttonContainer.appendChild(shiftSummaryBtn);
+
 
 
             reportDiv.appendChild(buttonContainer);
@@ -407,7 +448,7 @@
                     endTd.style.padding = '8px';
                     tr.appendChild(endTd);
 
-                    // Actions column with Edit and Delete buttons
+                    // Actions column with Edit, Delete, and View ESR JPG buttons
                     const actionsTd = document.createElement('td');
                     actionsTd.style.border = '1px solid #ddd';
                     actionsTd.style.padding = '8px';
@@ -420,10 +461,16 @@
 
                     const deleteBtn = document.createElement('button');
                     deleteBtn.textContent = 'Delete';
+                    deleteBtn.style.marginRight = '5px';
                     deleteBtn.style.backgroundColor = '#f44336';
                     deleteBtn.style.color = 'white';
                     deleteBtn.addEventListener('click', () => deleteCounterData(item));
                     actionsTd.appendChild(deleteBtn);
+
+                    const viewEsrBtn = document.createElement('button');
+                    viewEsrBtn.textContent = 'View ESR JPG';
+                    viewEsrBtn.addEventListener('click', () => showEsrJpgModal(item.id));
+                    actionsTd.appendChild(viewEsrBtn);
 
                     tr.appendChild(actionsTd);
 
@@ -902,8 +949,20 @@
 
                 // For well-known types, use predefined column order for readability
                 let headers = [];
+                let keyMap = {};
                 if (title === 'extra') headers = ['timestamp','itemName','billNumber','extraAmount','modeOfPay'];
-                else if (title === 'delivery') headers = ['timestamp','billNumber','amount','extraAmount','totalAmount','modeOfPay'];
+                else if (title === 'delivery') {
+                    headers = ['timestamp','billNumber','Amount without extra','extraAmount','totalAmount','modeOfPay','delivered'];
+                    keyMap = {
+                        'timestamp': 'timestamp',
+                        'billNumber': 'billNumber',
+                        'Amount without extra': 'amount',
+                        'extraAmount': 'extraAmount',
+                        'totalAmount': 'totalAmount',
+                        'modeOfPay': 'modeOfPay',
+                        'delivered': 'delivered'
+                    };
+                }
                 else if (title === 'bill_paid') headers = ['timestamp','vendorSupplier','amountPaid'];
                 else if (title === 'issue') headers = ['timestamp','billNumber','issueDescription'];
                 else if (title === 'retail_credit') headers = ['timestamp','phoneNumber','amount','modeOfPay'];
@@ -928,10 +987,14 @@
                     const tr = document.createElement('tr');
                     headers.forEach(header => {
                         const td = document.createElement('td');
-                        let value = (item[header] !== undefined && item[header] !== null) ? item[header] : '';
+                        const key = keyMap[header] || header;
+                        let value = (item[key] !== undefined && item[key] !== null) ? item[key] : '';
                         if ((header === 'timestamp' || header === 'time' || header === 'date') && value) {
                             const date = new Date(value);
                             if (!isNaN(date.getTime())) value = date.toLocaleString('en-US', { hour12: true });
+                        }
+                        if (key === 'delivered') {
+                            value = value ? 'Delivered' : 'Pending';
                         }
                         td.textContent = value;
                         td.style.border = '1px solid #ddd';
@@ -1446,7 +1509,7 @@
         function getFieldsForType(type) {
             switch (type) {
                 case 'extra': return ['timestamp', 'itemName', 'billNumber', 'extraAmount', 'modeOfPay'];
-                case 'delivery': return ['timestamp', 'billNumber', 'amount', 'modeOfPay'];
+                case 'delivery': return ['timestamp', 'billNumber', 'amount', 'modeOfPay', 'delivered'];
                 case 'bill_paid': return ['timestamp', 'vendorSupplier', 'amountPaid'];
                 case 'issue': return ['timestamp', 'billNumber', 'issueDescription'];
                 case 'retail_credit': return ['timestamp', 'phoneNumber', 'amount', 'modeOfPay'];
@@ -2374,6 +2437,62 @@
             } catch (error) {
                 console.error('Error deleting record:', error);
                 alert('Error deleting record.');
+            }
+        });
+
+        async function showEsrJpgModal(shiftId) {
+            const modal = document.getElementById('esr-jpg-modal');
+            const select = document.getElementById('shift-id-select');
+            select.innerHTML = '';
+
+            try {
+                const response = await fetch(`/api/counter_data?employeeId=${selectedEmployeeId}`);
+                if (!response.ok) throw new Error('Failed to fetch counter data');
+                const counterData = await response.json();
+
+                counterData.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.id;
+                    option.textContent = item.id;
+                    select.appendChild(option);
+                });
+
+                select.value = shiftId;
+                fetchEsrJpg(shiftId);
+                modal.style.display = 'flex';
+            } catch (error) {
+                console.error('Error fetching counter data for ESR JPG:', error);
+                alert('Error loading ESR JPG modal');
+            }
+        }
+
+        function fetchEsrJpg(shiftId) {
+            const img = document.getElementById('esr-jpg-image');
+            fetch(`/api/esr-jpg/${shiftId}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to fetch image');
+                    return response.blob();
+                })
+                .then(blob => {
+                    const url = URL.createObjectURL(blob);
+                    img.src = url;
+                })
+                .catch(error => {
+                    console.error('Error fetching ESR JPG:', error);
+                    img.src = '';
+                    alert('Error loading ESR JPG');
+                });
+        }
+
+        function closeEsrJpgModal() {
+            document.getElementById('esr-jpg-modal').style.display = 'none';
+        }
+
+        // Add event listener for shift ID select change
+        document.getElementById('shift-id-select').addEventListener('change', function() {
+            const shiftId = this.value;
+            if (shiftId) {
+                fetchEsrJpg(shiftId);
             }
         });
         </script>

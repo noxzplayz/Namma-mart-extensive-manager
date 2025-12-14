@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
         forms.forEach(form => {
             const inputs = form.querySelectorAll('input, select, textarea');
             inputs.forEach(input => {
-                if (employee[input.name]) {
+                if (employee[input.name] && input.name !== 'password') {
                     if (input.type === 'checkbox') {
                         if (employee[input.name].includes(input.value)) {
                             input.checked = true;
