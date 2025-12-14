@@ -57,35 +57,16 @@
                 return;
             }
 
-            // First, send OTP to employee's email
+            // Prompt for employee password
+            const password = prompt('Enter your password to end shift:');
+            if (!password) return;
+
+            // Verify the password
             try {
-                const otpResponse = await fetch('/api/send-employee-otp', {
+                const verifyResponse = await fetch('/api/end-employee-shift', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ employeeId })
-                });
-                const otpData = await otpResponse.json();
-                if (!otpData.success) {
-                    alert('Failed to send OTP: ' + otpData.message);
-                    return;
-                }
-                alert('OTP sent to your email. Please check your inbox.');
-            } catch (error) {
-                console.error('Error sending OTP:', error);
-                alert('An error occurred while sending OTP.');
-                return;
-            }
-
-            // Now, prompt for OTP
-            const otp = prompt('Enter the OTP sent to your email to end shift:');
-            if (!otp) return;
-
-            // Verify the OTP
-            try {
-                const verifyResponse = await fetch('/api/verify-employee-otp', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ otp, employeeId })
+                    body: JSON.stringify({ password, employeeId })
                 });
                 const verifyData = await verifyResponse.json();
                 if (verifyData.success) {
@@ -94,11 +75,11 @@
                     const todayDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
                     window.location.href = `end_shift_report.html?employeeId=${encodeURIComponent(employeeId)}&date=${encodeURIComponent(todayDate)}`;
                 } else {
-                    alert('Invalid OTP: ' + verifyData.message);
+                    alert('Incorrect password.');
                 }
             } catch (error) {
-                console.error('Error verifying OTP:', error);
-                alert('An error occurred while verifying OTP.');
+                console.error('Error verifying password:', error);
+                alert('An error occurred while verifying password.');
             }
         }
 

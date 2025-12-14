@@ -110,10 +110,10 @@
             const deliveryData = {
                 employeeId: employeeId,
                 billNumber: formattedBillNumber,
-                amount: formData.get('amount'),
-                extraAmount: formData.get('extra-amount') || 0,
-                totalAmount: formData.get('amount'),
-                modeOfPay: formData.get('mode-of-pay')
+                amount: isBillWithExtra ? document.getElementById('amount-with-extra').value : document.getElementById('amount').value,
+                extraAmount: document.getElementById('extra-amount').value || 0,
+                totalAmount: document.getElementById('amount').value,
+                modeOfPay: document.getElementById('mode-of-pay').value
             };
 
             // Save delivery data

@@ -18,7 +18,7 @@
         h1, h2 {
             margin-bottom: 10px;
         }
-        #summary, #todays-report {
+        #summary, #todays-report, #data-activity-report {
             margin-bottom: 20px;
             border: 1px solid #ddd;
             padding: 15px;
@@ -103,6 +103,13 @@
         <p>Retail Credit: <span id="total-retail-credit">0</span></p>
     </section>
 
+    <section id="data-activity-report">
+        <div class="section-title">---------Data Activity Report----------</div>
+        <p>Data Deleted: <span id="total-data-deleted">0</span></p>
+        <p>Data Edited: <span id="total-data-edited">0</span></p>
+        <p>Data Inputed: <span id="total-data-inputed">0</span></p>
+    </section>
+
     <p class="note">This data is present with Admin and copy of analysis is sent to your email check your inbox</p>
     <button id="close-window-btn" style="margin-bottom: 20px; padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">Close</button>
 
@@ -110,6 +117,7 @@
         <p>Made with ❤️ By <a href="https://www.instagram.com/yochxn.__/" target="_blank">Yochan</a></p>
     </footer>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script>
         function formatDateTime(timestamp) {
             if (!timestamp) return '';
@@ -132,8 +140,12 @@
             return null;
         }
 
-        async function fetchData(type, employeeId, date) {
-            const response = await fetch(`/api/${type}?employeeId=${employeeId}&date=${date}`);
+        async function fetchData(type, employeeId, date, shiftStartTime, shiftEndTime) {
+            let url = `/api/${type}?employeeId=${employeeId}&date=${date}`;
+            if (shiftStartTime && shiftEndTime) {
+                url += `&shiftStartTime=${encodeURIComponent(shiftStartTime)}&shiftEndTime=${encodeURIComponent(shiftEndTime)}`;
+            }
+            const response = await fetch(url);
             if (response.ok) {
                 return response.json();
             }
@@ -166,14 +178,21 @@
                     if (header === 'Extra Amount') key = 'extraAmount';
                     if (header === 'Mode of Pay') key = 'modeOfPay';
                     if (header === 'Amount') key = 'amount';
+                    if (header === 'without extra') key = 'amount';
                     if (header === 'Vendor/Supplier') key = 'vendorSupplier';
                     if (header === 'Amount Paid') key = 'amountPaid';
                     if (header === 'Issue Description') key = 'issueDescription';
                     if (header === 'Phone Number') key = 'phoneNumber';
                     if (header === 'Timestamp') key = 'timestamp';
+                    if (header === 'Delivered') key = 'delivered';
                     // display date nicely for timestamp columns
                     if (key === 'timestamp') {
                         td.textContent = formatDateTime(item[key]);
+                    } else if (header === 'Total Amount') {
+                        // Calculate Total Amount as sum of without extra and Extra Amount
+                        const withoutExtra = parseFloat(item['amount'] || 0);
+                        const extraAmount = parseFloat(item['extraAmount'] || 0);
+                        td.textContent = (withoutExtra + extraAmount).toFixed(2);
                     } else {
                         td.textContent = item[key] !== undefined ? item[key] : '';
                     }
@@ -185,8 +204,12 @@
             container.appendChild(table);
         }
 
-        async function fetchTodayReportSummary(employeeId, date) {
-            const response = await fetch(`/api/todays-report-summary?employeeId=${employeeId}&date=${date}`);
+        async function fetchTodayReportSummary(employeeId, date, shiftStartTime, shiftEndTime) {
+            let url = `/api/todays-report-summary?employeeId=${employeeId}&date=${date}`;
+            if (shiftStartTime && shiftEndTime) {
+                url += `&shiftStartTime=${encodeURIComponent(shiftStartTime)}&shiftEndTime=${encodeURIComponent(shiftEndTime)}`;
+            }
+            const response = await fetch(url);
             if (response.ok) {
                 return response.json();
             }
@@ -197,6 +220,22 @@
                 cardPaytm: 0,
                 cash: 0,
                 retailCredit: 0
+            };
+        }
+
+        async function fetchDataActivitySummary(employeeId, date, shiftStartTime, shiftEndTime) {
+            let url = `/api/data-activity-summary?employeeId=${employeeId}&date=${date}`;
+            if (shiftStartTime && shiftEndTime) {
+                url += `&shiftStartTime=${encodeURIComponent(shiftStartTime)}&shiftEndTime=${encodeURIComponent(shiftEndTime)}`;
+            }
+            const response = await fetch(url);
+            if (response.ok) {
+                return response.json();
+            }
+            return {
+                deleted: 0,
+                edited: 0,
+                inputed: 0
             };
         }
 
@@ -213,6 +252,7 @@
         async function renderPage() {
             const employeeId = getQueryParam('employeeId');
             const date = getQueryParam('date');
+            const shiftId = getQueryParam('shiftId');
 
             if (!employeeId || !date) {
                 alert('Employee ID or Date missing in URL parameters.');
@@ -232,9 +272,12 @@
             let shiftEnd = '';
             let counterNumber = '';
             let pineLabValue = '';
+            let lastShiftStartTime = '';
+            let lastShiftEndTime = '';
+            let effectiveShiftId = shiftId || '1';
 
             if (counterData.length > 0) {
-                // Take the last shift record for the day (most recent)
+                // Take the last shift record for the day (most recent ended shift)
                 const shift = counterData[counterData.length - 1];
                 shiftStart = formatDateTime(shift.shiftStartTime);
                 shiftEnd = formatDateTime(shift.shiftEndTime);
@@ -242,6 +285,10 @@
                 if (counterNumber.toLowerCase() === 'counter 1' || counterNumber === '1') {
                     pineLabValue = shift.pineLabValue || shift.pine_lab_value || '';
                 }
+                // For filtering data, use the last ended shift's times
+                lastShiftStartTime = shift.shiftStartTime;
+                lastShiftEndTime = shift.shiftEndTime;
+                effectiveShiftId = shift.shiftId || shiftId || '1';
             }
 
             document.getElementById('shift-start').textContent = shiftStart;
@@ -249,24 +296,24 @@
             document.getElementById('counter-number').textContent = counterNumber;
             document.getElementById('pine-lab-value').textContent = pineLabValue;
 
-            // Fetch and render tables: extra, delivery, bill_paid, issue, retail_credit
-            const extraData = await fetchData('extra', employeeId, date);
+            // Fetch and render tables: extra, delivery, bill_paid, issue, retail_credit with shift filtering
+            const extraData = await fetchData('extra', employeeId, date, lastShiftStartTime, lastShiftEndTime);
             createTable(['Timestamp', 'Item Name', 'Bill Number', 'Extra Amount', 'Mode of Pay'], extraData, 'table-extra');
 
-            const deliveryData = await fetchData('delivery', employeeId, date);
-            createTable(['Timestamp', 'Bill Number', 'Amount', 'Extra Amount', 'Total Amount', 'Mode of Pay'], deliveryData, 'table-delivery');
+            const deliveryData = await fetchData('delivery', employeeId, date, lastShiftStartTime, lastShiftEndTime);
+            createTable(['Timestamp', 'Bill Number', 'without extra', 'Extra Amount', 'Total Amount', 'Mode of Pay', 'Delivered'], deliveryData, 'table-delivery');
 
-            const billPaidData = await fetchData('bill_paid', employeeId, date);
+            const billPaidData = await fetchData('bill_paid', employeeId, date, lastShiftStartTime, lastShiftEndTime);
             createTable(['Timestamp', 'Vendor/Supplier', 'Amount Paid'], billPaidData, 'table-bill-paid');
 
-            const issueData = await fetchData('issue', employeeId, date);
+            const issueData = await fetchData('issue', employeeId, date, lastShiftStartTime, lastShiftEndTime);
             createTable(['Timestamp', 'Bill Number', 'Issue Description'], issueData, 'table-issue');
 
-            const retailCreditData = await fetchData('retail_credit', employeeId, date);
+            const retailCreditData = await fetchData('retail_credit', employeeId, date, lastShiftStartTime, lastShiftEndTime);
             createTable(['Timestamp', 'Phone Number', 'Amount', 'Mode of Pay'], retailCreditData, 'table-retail-credit');
 
-            // Fetch and display today's report summary totals for payment types from extra data
-            const summary = await fetchTodayReportSummary(employeeId, date);
+            // Fetch and display today's report summary totals for payment types from extra data with shift filtering
+            const summary = await fetchTodayReportSummary(employeeId, date, lastShiftStartTime, lastShiftEndTime);
 
             document.getElementById('total-upi-pinelab').textContent = summary.upiPinelab.toFixed(2);
             document.getElementById('total-card-pinelab').textContent = summary.cardPinelab.toFixed(2);
@@ -274,6 +321,36 @@
             document.getElementById('total-card-paytm').textContent = summary.cardPaytm.toFixed(2);
             document.getElementById('total-cash').textContent = summary.cash.toFixed(2);
             document.getElementById('total-retail-credit').textContent = summary.retailCredit.toFixed(2);
+
+            // Fetch and display data activity summary
+            const activitySummary = await fetchDataActivitySummary(employeeId, date, lastShiftStartTime, lastShiftEndTime);
+
+            document.getElementById('total-data-deleted').textContent = activitySummary.deleted;
+            document.getElementById('total-data-edited').textContent = activitySummary.edited;
+            document.getElementById('total-data-inputed').textContent = activitySummary.inputed;
+
+            // After rendering, capture screenshot and save
+            setTimeout(async () => {
+                try {
+                    const canvas = await html2canvas(document.documentElement, { 
+                        scale: 2, 
+                        useCORS: true, 
+                        height: document.documentElement.scrollHeight,
+                        width: document.documentElement.scrollWidth,
+                        scrollX: 0,
+                        scrollY: 0
+                    });
+                    const jpgData = canvas.toDataURL('image/jpeg', 0.9).split(',')[1]; // base64 without prefix
+                    await fetch('/api/save-esr-jpg', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ employeeId, date, shiftId: effectiveShiftId, jpgData })
+                    });
+                    console.log('ESR JPG saved successfully.');
+                } catch (error) {
+                    console.error('Error saving ESR JPG:', error);
+                }
+            }, 3000); // Wait 3 seconds for rendering to complete
         }
 
         window.onload = () => {

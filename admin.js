@@ -452,7 +452,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         shiftIdSelect.innerHTML = '<option value="">Select a shift ID</option>';
                         data.jpgs.forEach(jpg => {
                             const option = document.createElement('option');
-                            option.value = jpg.id;
+                            option.value = jpg.shift_id;
                             option.textContent = jpg.shift_id || 'N/A';
                             shiftIdSelect.appendChild(option);
                         });
@@ -494,7 +494,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.jpgs && data.jpgs.length > 0) {
-                        const jpg = data.jpgs.find(j => j.id == selectedShiftId);
+                        const jpg = data.jpgs.find(j => j.shift_id == selectedShiftId);
                         if (jpg) {
                             const grid = document.getElementById('esr-jpgs-grid');
                             grid.innerHTML = '';
