@@ -139,6 +139,21 @@
             return null;
         }
 
+        async function fetchActiveShift(employeeId) {
+            const employee = await fetchEmployee(employeeId);
+            if (!employee) {
+                alert('Employee not found.');
+                return null;
+            }
+            const today = getTodayDate();
+            const activeShift = employee.counter_selections && employee.counter_selections.find(sel => !sel.shiftEndTime && sel.shiftStartTime && sel.shiftStartTime.startsWith(today));
+            if (!activeShift) {
+                alert('No active shift found for today.');
+                return null;
+            }
+            return activeShift.shiftStartTime;
+        }
+
         async function fetchData(endpoint, title, headers, fields, shiftStartTime, shiftEndTime) {
             const employeeId = localStorage.getItem('employeeId');
             if (!employeeId) {
@@ -147,27 +162,41 @@
             }
             const today = getTodayDate();
             let url = `/api/${endpoint}?employeeId=${employeeId}&date=${today}`;
-            if (shiftStartTime && shiftEndTime) {
-                url += `&shiftStartTime=${encodeURIComponent(shiftStartTime)}&shiftEndTime=${encodeURIComponent(shiftEndTime)}`;
+            if (shiftStartTime) {
+                url += `&shiftStartTime=${encodeURIComponent(shiftStartTime)}`;
             }
             try {
                 const response = await fetch(url);
                 const data = await response.json();
                 document.getElementById('table-title').textContent = title;
                 const thead = document.getElementById('table-head');
-                thead.innerHTML = '<tr>' + headers.map(h => `<th style="border:1px solid #000; padding:8px;">${h}</th>`).join('') + '<th style="border:1px solid #000; padding:8px;">Actions</th></tr>';
+                let tableHeaders = headers.map(h => `<th style="border:1px solid #000; padding:8px;">${h}</th>`).join('');
+                if (endpoint === 'delivery') {
+                    tableHeaders += '<th style="border:1px solid #000; padding:8px;">Delivered</th>';
+                }
+                tableHeaders += '<th style="border:1px solid #000; padding:8px;">Actions</th></tr>';
+                thead.innerHTML = '<tr>' + tableHeaders;
                 const tbody = document.querySelector('#data-table-content tbody');
                 tbody.innerHTML = '';
                 data.forEach(item => {
                     const row = document.createElement('tr');
-                    row.innerHTML = fields.map(field => {
+                    let rowHtml = fields.map(field => {
                         let value = item[field];
                         if (field === 'timestamp' && value) {
                             const date = new Date(value);
                             value = date.toLocaleString('en-US', { hour12: true });
                         }
                         return `<td style="border:1px solid #000; padding:8px;">${value}</td>`;
-                    }).join('') + `<td style="border:1px solid #000; padding:8px;"><button data-type="${endpoint}" data-id="${item.id}" data-item='${JSON.stringify(item).replace(/'/g, "\\'")}' onclick="editItem(this)">Edit</button> <button onclick="deleteItem('${endpoint}', '${item.id}')">Delete</button></td>`;
+                    }).join('');
+                    if (endpoint === 'delivery') {
+                        if (item.delivered) {
+                            rowHtml += `<td style="border:1px solid #000; padding:8px;">✓ <button onclick="toggleDelivered('${item.id}', false)">Untick</button></td>`;
+                        } else {
+                            rowHtml += `<td style="border:1px solid #000; padding:8px;"><button onclick="toggleDelivered('${item.id}', true)">Tick</button></td>`;
+                        }
+                    }
+                    rowHtml += `<td style="border:1px solid #000; padding:8px;"><button data-type="${endpoint}" data-id="${item.id}" data-item='${JSON.stringify(item).replace(/'/g, "\\'")}' onclick="editItem(this)">Edit</button> <button onclick="deleteItem('${endpoint}', '${item.id}')">Delete</button></td>`;
+                    row.innerHTML = rowHtml;
                     tbody.appendChild(row);
                 });
                 document.getElementById('data-table').style.display = 'block';
@@ -177,24 +206,64 @@
             }
         }
 
-        function viewExtra() {
-            fetchData('extra', 'Extra Data', ['Timestamp', 'Item Name', 'Bill Number', 'Extra Amount', 'Mode of Pay'], ['timestamp', 'itemName', 'billNumber', 'extraAmount', 'modeOfPay']);
+        async function viewExtra() {
+            const employeeId = localStorage.getItem('employeeId');
+            if (!employeeId) {
+                alert('Employee ID not found. Please login again.');
+                return;
+            }
+            const shiftStartTime = await fetchActiveShift(employeeId);
+            if (shiftStartTime) {
+                fetchData('extra', 'Extra Data', ['Timestamp', 'Item Name', 'Bill Number', 'Extra Amount', 'Mode of Pay'], ['timestamp', 'itemName', 'billNumber', 'extraAmount', 'modeOfPay'], shiftStartTime);
+            }
         }
 
-        function viewDelivery() {
-            fetchData('delivery', 'Delivery Data', ['Timestamp', 'Bill Number', 'Amount', 'Mode of Pay'], ['timestamp', 'billNumber', 'amount', 'modeOfPay']);
+        async function viewDelivery() {
+            const employeeId = localStorage.getItem('employeeId');
+            if (!employeeId) {
+                alert('Employee ID not found. Please login again.');
+                return;
+            }
+            const shiftStartTime = await fetchActiveShift(employeeId);
+            if (shiftStartTime) {
+                fetchData('delivery', 'Delivery Data', ['Timestamp', 'Bill Number', 'Amount', 'Mode of Pay'], ['timestamp', 'billNumber', 'amount', 'modeOfPay'], shiftStartTime);
+            }
         }
 
-        function viewBillPaid() {
-            fetchData('bill_paid', 'Bill Paid Data', ['Timestamp', 'Vendor/Supplier', 'Amount Paid'], ['timestamp', 'vendorSupplier', 'amountPaid']);
+        async function viewBillPaid() {
+            const employeeId = localStorage.getItem('employeeId');
+            if (!employeeId) {
+                alert('Employee ID not found. Please login again.');
+                return;
+            }
+            const shiftStartTime = await fetchActiveShift(employeeId);
+            if (shiftStartTime) {
+                fetchData('bill_paid', 'Bill Paid Data', ['Timestamp', 'Vendor/Supplier', 'Amount Paid'], ['timestamp', 'vendorSupplier', 'amountPaid'], shiftStartTime);
+            }
         }
 
-        function viewIssue() {
-            fetchData('issue', 'Issue Data', ['Timestamp', 'Bill Number', 'Issue Details'], ['timestamp', 'billNumber', 'issueDescription']);
+        async function viewIssue() {
+            const employeeId = localStorage.getItem('employeeId');
+            if (!employeeId) {
+                alert('Employee ID not found. Please login again.');
+                return;
+            }
+            const shiftStartTime = await fetchActiveShift(employeeId);
+            if (shiftStartTime) {
+                fetchData('issue', 'Issue Data', ['Timestamp', 'Bill Number', 'Issue Details'], ['timestamp', 'billNumber', 'issueDescription'], shiftStartTime);
+            }
         }
 
-        function viewRetailCredit() {
-            fetchData('retail_credit', 'Retail Credit Data', ['Timestamp', 'Phone Number', 'Amount', 'Mode of Pay'], ['timestamp', 'phoneNumber', 'amount', 'modeOfPay']);
+        async function viewRetailCredit() {
+            const employeeId = localStorage.getItem('employeeId');
+            if (!employeeId) {
+                alert('Employee ID not found. Please login again.');
+                return;
+            }
+            const shiftStartTime = await fetchActiveShift(employeeId);
+            if (shiftStartTime) {
+                fetchData('retail_credit', 'Retail Credit Data', ['Timestamp', 'Phone Number', 'Amount', 'Mode of Pay'], ['timestamp', 'phoneNumber', 'amount', 'modeOfPay'], shiftStartTime);
+            }
         }
 
         function viewHistory() {
@@ -257,11 +326,26 @@
                 if (field !== 'timestamp' && field !== 'id') {
                     const label = document.createElement('label');
                     label.textContent = field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()) + ': ';
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.name = field;
-                    input.value = item[field] || '';
-                    input.required = true;
+                    let input;
+                    if (field === 'modeOfPay') {
+                        input = document.createElement('select');
+                        input.name = field;
+                        input.required = true;
+                        const options = ['upi pinelab', 'card pinelab', 'upi paytm', 'card paytm', 'cash'];
+                        options.forEach(optionValue => {
+                            const option = document.createElement('option');
+                            option.value = optionValue;
+                            option.textContent = optionValue;
+                            input.appendChild(option);
+                        });
+                        input.value = item[field] || '';
+                    } else {
+                        input = document.createElement('input');
+                        input.type = 'text';
+                        input.name = field;
+                        input.value = item[field] || '';
+                        input.required = true;
+                    }
                     fieldsDiv.appendChild(label);
                     fieldsDiv.appendChild(input);
                     fieldsDiv.appendChild(document.createElement('br'));
@@ -434,6 +518,34 @@
                 alert('Error updating item.');
             });
         });
+
+        function toggleDelivered(id, newStatus) {
+            const employeeId = localStorage.getItem('employeeId');
+            const action = newStatus ? 'Marked as delivered' : 'Marked as not delivered';
+            fetch(`/api/delivery/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    employeeId: employeeId,
+                    delivered: newStatus,
+                    editReason: action
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert(action + '.');
+                    viewDelivery(); // Refresh the table
+                } else {
+                    alert('Error updating delivery status.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating delivery status.');
+            });
+        }
     </script>
 </body>
 </html>

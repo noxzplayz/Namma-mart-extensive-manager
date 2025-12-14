@@ -15,22 +15,38 @@ const db = low(adapter);
 // Set up the database defaults
 db.defaults({ store_closed: false, employees: [], nextShiftId: 1 }).write();
 
-// Set up SQLite database for ESR JPGs
+// Set up SQLite database for ESR Reports
 const esrDb = new Database('esrjpg.db');
 esrDb.exec(`
-    CREATE TABLE IF NOT EXISTS esr_jpgs (
+    CREATE TABLE IF NOT EXISTS esr_reports (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        employee_id TEXT NOT NULL,
+        date TEXT NOT NULL,
+        shift_id TEXT NOT NULL,
+        report_data TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(employee_id, date, shift_id)
+    );
+`);
+// Drop and recreate esr_jpgs table to remove unique constraint
+try {
+    esrDb.exec('DROP TABLE IF EXISTS esr_jpgs;');
+} catch (error) {
+    console.log('Drop table failed:', error.message);
+}
+esrDb.exec(`
+    CREATE TABLE esr_jpgs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         employee_id TEXT NOT NULL,
         date TEXT NOT NULL,
         shift_id TEXT NOT NULL,
         jpg_data BLOB NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(employee_id, date, shift_id)
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 `);
 // Add shift_id column if not exists (for existing databases)
 try {
-    esrDb.exec(`ALTER TABLE esr_jpgs ADD COLUMN shift_id TEXT;`);
+    esrDb.exec(`ALTER TABLE esr_reports ADD COLUMN shift_id TEXT;`);
 } catch (error) {
     // Ignore if column already exists
 }
@@ -99,9 +115,15 @@ app.post('/login', async (req, res) => {
             db.get('employees').find({ id: employee.id }).assign({ shiftEnded: false, startShiftTime: new Date().toISOString() }).write();
         }
 
+        // Ensure counter_selections is an array
+        if (!employee.counter_selections) {
+            employee.counter_selections = [];
+            db.get('employees').find({ id: employee.id }).assign({ counter_selections: [] }).write();
+        }
+
         // Check if there is an active shift today (counter_selection with shiftEndTime null and shiftStartTime is today)
         const today = new Date().toISOString().split('T')[0];
-        const activeShift = employee.counter_selections && employee.counter_selections.some(sel => !sel.shiftEndTime && sel.shiftStartTime && sel.shiftStartTime.startsWith(today));
+        const activeShift = employee.counter_selections.some(sel => !sel.shiftEndTime && sel.shiftStartTime && sel.shiftStartTime.startsWith(today));
         if (activeShift) {
             res.json({ success: true, redirectUrl: '/employee.html', employeeId: employee.id });
         } else {
@@ -126,6 +148,10 @@ app.get('/admin', (req, res) => {
     app.post('/api/employees', (req, res) => {
         const employeeData = req.body;
 
+        // Set username to employee-id
+        employeeData.username = employeeData['employee-id'];
+        delete employeeData['employee-id'];
+
         // Encrypt the password
         const salt = bcrypt.genSaltSync(10);
         const hashedPassword = bcrypt.hashSync(employeeData.password, salt);
@@ -136,6 +162,9 @@ app.get('/admin', (req, res) => {
 
         // Initialize shiftEnded to false for new employees
         employeeData.shiftEnded = false;
+
+        // Initialize counter_selections as empty array
+        employeeData.counter_selections = [];
 
         // Save the employee to the database
         db.get('employees').push(employeeData).write();
@@ -196,14 +225,16 @@ app.post('/api/counter-selection', (req, res) => {
     // Ensure counter_selections exists
     let selections = employee.counter_selections || [];
 
-    // Generate shift ID (safe, sequential)
-    const shiftId = db.get('nextShiftId').value();
-    db.set('nextShiftId', shiftId + 1).write();
+    // Generate shift ID (3 digits + 3 letters from name in caps)
+    const shiftNumber = db.get('nextShiftId').value();
+    const namePart = employee.name.replace(/\s/g, '').substr(0, 3).toUpperCase();
+    const shiftId = shiftNumber.toString().padStart(3, '0') + namePart;
+    db.set('nextShiftId', shiftNumber + 1).write();
 
     // Create new shift entry
     const newShift = {
         id: shortid.generate(),
-        shiftId: shiftId.toString(),
+        shiftId: shiftId,
         counter,
         pineLabValue,
         shiftStartTime: timestamp,
@@ -319,6 +350,7 @@ app.post('/api/delivery', (req, res) => {
         extraAmount: deliveryData.extraAmount,
         totalAmount: deliveryData.totalAmount,
         modeOfPay: deliveryData.modeOfPay,
+        delivered: false,
         timestamp: new Date().toISOString()
     });
 
@@ -734,9 +766,10 @@ app.post('/api/verify-employee-otp', async (req, res) => {
     // Record endShiftTime and set shiftEnded true
     const endShiftTime = new Date().toISOString();
     const employeeForShiftEnd = db.get('employees').find({ id: employeeId }).value();
+    let lastShiftIndex = -1;
     if (employeeForShiftEnd && employeeForShiftEnd.counter_selections) {
         const today = new Date().toISOString().split('T')[0];
-        const lastShiftIndex = employeeForShiftEnd.counter_selections.reduce((lastIndex, selection, currentIndex) => {
+        lastShiftIndex = employeeForShiftEnd.counter_selections.reduce((lastIndex, selection, currentIndex) => {
             if (selection.shiftStartTime && selection.shiftStartTime.startsWith(today)) {
                 return currentIndex;
             }
@@ -749,41 +782,86 @@ app.post('/api/verify-employee-otp', async (req, res) => {
     }
     db.get('employees').find({ id: employeeId }).assign({ shiftEnded: true, counter_selections: employeeForShiftEnd.counter_selections }).write();
 
-    // Generate and save ESR JPG
-    const date = endShiftTime.split('T')[0];
-    let screenshotBuffer = null;
-    try {
-        const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
-        const page = await browser.newPage();
-        await page.setViewport({ width: 1200, height: 800 }); // Set viewport for better rendering
-        await page.goto(`http://localhost:${port}/end_shift_report.html?employeeId=${employeeId}&date=${date}`, { waitUntil: 'networkidle2' });
-        await page.waitForSelector('#summary', { timeout: 10000 });
-        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for async data loading and rendering
-        await page.waitForSelector('footer', { timeout: 10000 }); // Ensure footer is loaded
-        const screenshot = await page.screenshot({ type: 'jpeg', fullPage: true });
-        await browser.close();
-        screenshotBuffer = screenshot; // Store buffer for email attachment
-        const jpgData = screenshot.toString('base64');
-
-        // Get shift ID from the last shift
-        const shiftId = employeeForShiftEnd.counter_selections[lastShiftIndex].shiftId;
-
-        const stmt = esrDb.prepare('INSERT OR REPLACE INTO esr_jpgs (employee_id, date, shift_id, jpg_data) VALUES (?, ?, ?, ?)');
-        stmt.run(employeeId, date, shiftId, Buffer.from(jpgData, 'base64'));
-        console.log(`ESR JPG generated and saved for employee ${employeeId} on ${date} with shift ID ${shiftId}`);
-    } catch (error) {
-        console.error('Error generating ESR JPG:', error);
-    }
-
-    // Fetch updated employee data
+    // Fetch employee data for report
     const employee = db.get('employees').find({ id: employeeId }).value();
     if (!employee) {
         return res.status(404).json({ success: false, message: 'Employee not found after verification.' });
     }
 
+    const employeeName = employee.name || 'Employee';
+
+    // Generate and save ESR Text Report
+    const date = endShiftTime.split('T')[0];
+    let reportText = '';
+    try {
+        // Get shift details
+        const shiftStartTime = employeeForShiftEnd.counter_selections[lastShiftIndex].shiftStartTime;
+        const shiftEndTimeFormatted = endShiftTime;
+        const shiftId = employeeForShiftEnd.counter_selections[lastShiftIndex].shiftId;
+
+        // Fetch today's report summary
+        const reportSummaryResponse = await fetch(`http://localhost:${port}/api/todays-report-summary?employeeId=${employeeId}&date=${date}&shiftStartTime=${shiftStartTime}&shiftEndTime=${shiftEndTimeFormatted}`);
+        const reportSummary = await reportSummaryResponse.json();
+
+        // Fetch data activity summary
+        const activitySummaryResponse = await fetch(`http://localhost:${port}/api/data-activity-summary?employeeId=${employeeId}&date=${date}&shiftStartTime=${shiftStartTime}&shiftEndTime=${shiftEndTimeFormatted}`);
+        const activitySummary = await activitySummaryResponse.json();
+
+        // Generate text report
+        reportText = `
+End Shift Report for ${employeeName}
+
+Shift Details:
+- Shift Start Time: ${new Date(shiftStartTime).toLocaleString()}
+- Shift End Time: ${new Date(shiftEndTimeFormatted).toLocaleString()}
+- Shift ID: ${shiftId}
+
+Today's Report Summary:
+- UPI Pinelab: ₹${reportSummary.upiPinelab || 0}
+- Card Pinelab: ₹${reportSummary.cardPinelab || 0}
+- UPI Paytm: ₹${reportSummary.upiPaytm || 0}
+- Card Paytm: ₹${reportSummary.cardPaytm || 0}
+- Cash: ₹${reportSummary.cash || 0}
+- Retail Credit: ₹${reportSummary.retailCredit || 0}
+
+Data Activity Summary:
+- Entries Added: ${activitySummary.inputed || 0}
+- Entries Edited: ${activitySummary.edited || 0}
+- Entries Deleted: ${activitySummary.deleted || 0}
+
+Thank you for your work today.
+Regards,
+Namma Mart
+        `;
+
+        // Save the text report
+        const stmt = esrDb.prepare('INSERT OR REPLACE INTO esr_reports (employee_id, date, shift_id, report_data) VALUES (?, ?, ?, ?)');
+        stmt.run(employeeId, date, shiftId, reportText.trim());
+        console.log(`ESR Text Report generated and saved for employee ${employeeId} on ${date} with shift ID ${shiftId}`);
+
+        // Generate and save ESR JPG
+        try {
+            const browser = await puppeteer.launch({ headless: true });
+            const page = await browser.newPage();
+            await page.setViewport({ width: 1200, height: 800 });
+            const reportUrl = `http://localhost:${port}/end_shift_report.html?employeeId=${employeeId}&date=${date}&shiftId=${shiftId}`;
+            await page.goto(reportUrl, { waitUntil: 'networkidle2' });
+            const screenshotBuffer = await page.screenshot({ fullPage: true, type: 'jpeg', quality: 90 });
+            await browser.close();
+
+            // Save the JPG to database
+            const jpgStmt = esrDb.prepare('INSERT OR REPLACE INTO esr_jpgs (employee_id, date, shift_id, jpg_data) VALUES (?, ?, ?, ?)');
+            jpgStmt.run(employeeId, date, shiftId, screenshotBuffer);
+            console.log(`ESR JPG generated and saved for employee ${employeeId} on ${date} with shift ID ${shiftId}`);
+        } catch (jpgError) {
+            console.error('Error generating ESR JPG:', jpgError);
+        }
+    } catch (error) {
+        console.error('Error generating ESR Text Report:', error);
+    }
+
     // Compose email content for shift end report
     const startShiftTime = employee.startShiftTime || 'N/A';
-    const employeeName = employee.name || 'Employee';
 
     const emailText = `
 Hello ${employeeName},
@@ -793,24 +871,18 @@ Your shift has ended successfully.
 Shift Start Time: ${startShiftTime}
 Shift End Time: ${endShiftTime}
 
-Please find attached the end shift report screenshot.
-
-Thank you for your work today.
+${reportText}
 
 Regards,
 Namma Mart
     `;
 
-    // Send email with nodemailer including attachment
+    // Send email with nodemailer
     const mailOptions = {
         from: emailConfig.from,
         to: employee.email,
         subject: 'Namma Mart - Shift End Report',
-        text: emailText,
-        attachments: screenshotBuffer ? [{
-            filename: 'end_shift_report.jpg',
-            content: screenshotBuffer
-        }] : []
+        text: emailText
     };
 
     try {
@@ -822,6 +894,153 @@ Namma Mart
     }
 
     return res.json({ success: true, message: 'OTP verified. Shift ended and email sent.' });
+});
+
+/**
+ * End employee shift with password verification
+ */
+app.post('/api/end-employee-shift', async (req, res) => {
+    const { password, employeeId } = req.body;
+    if (!password || !employeeId) {
+        return res.status(400).json({ success: false, message: 'Password and Employee ID are required.' });
+    }
+
+    const employeeRecord = db.get('employees').find({ id: employeeId }).value();
+    if (!employeeRecord) {
+        return res.status(404).json({ success: false, message: 'Employee not found.' });
+    }
+
+    // Verify employee password
+    if (!bcrypt.compareSync(password, employeeRecord.password)) {
+        return res.status(401).json({ success: false, message: 'Invalid password.' });
+    }
+
+    // Record endShiftTime and set shiftEnded true
+    const endShiftTime = new Date().toISOString();
+    const employeeForShiftEnd = db.get('employees').find({ id: employeeId }).value();
+    let lastShiftIndex = -1;
+    if (employeeForShiftEnd && employeeForShiftEnd.counter_selections) {
+        const today = new Date().toISOString().split('T')[0];
+        lastShiftIndex = employeeForShiftEnd.counter_selections.reduce((lastIndex, selection, currentIndex) => {
+            if (selection.shiftStartTime && selection.shiftStartTime.startsWith(today)) {
+                return currentIndex;
+            }
+            return lastIndex;
+        }, -1);
+
+        if (lastShiftIndex !== -1) {
+            employeeForShiftEnd.counter_selections[lastShiftIndex].shiftEndTime = endShiftTime;
+        }
+    }
+    db.get('employees').find({ id: employeeId }).assign({ shiftEnded: true, counter_selections: employeeForShiftEnd.counter_selections }).write();
+
+    // Use the employee data fetched earlier for report
+    const employeeName = employeeRecord.name || 'Employee';
+
+    // Generate and save ESR Text Report
+    const date = endShiftTime.split('T')[0];
+    let reportText = '';
+    try {
+        // Get shift details
+        const shiftStartTime = employeeForShiftEnd.counter_selections[lastShiftIndex].shiftStartTime;
+        const shiftEndTimeFormatted = endShiftTime;
+        const shiftId = employeeForShiftEnd.counter_selections[lastShiftIndex].shiftId;
+
+        // Fetch today's report summary
+        const reportSummaryResponse = await fetch(`http://localhost:${port}/api/todays-report-summary?employeeId=${employeeId}&date=${date}&shiftStartTime=${shiftStartTime}&shiftEndTime=${shiftEndTimeFormatted}`);
+        const reportSummary = await reportSummaryResponse.json();
+
+        // Fetch data activity summary
+        const activitySummaryResponse = await fetch(`http://localhost:${port}/api/data-activity-summary?employeeId=${employeeId}&date=${date}&shiftStartTime=${shiftStartTime}&shiftEndTime=${shiftEndTimeFormatted}`);
+        const activitySummary = await activitySummaryResponse.json();
+
+        // Generate text report
+        reportText = `
+End Shift Report for ${employeeName}
+
+Shift Details:
+- Shift Start Time: ${new Date(shiftStartTime).toLocaleString()}
+- Shift End Time: ${new Date(shiftEndTimeFormatted).toLocaleString()}
+- Shift ID: ${shiftId}
+
+Today's Report Summary:
+- UPI Pinelab: ₹${reportSummary.upiPinelab || 0}
+- Card Pinelab: ₹${reportSummary.cardPinelab || 0}
+- UPI Paytm: ₹${reportSummary.upiPaytm || 0}
+- Card Paytm: ₹${reportSummary.cardPaytm || 0}
+- Cash: ₹${reportSummary.cash || 0}
+- Retail Credit: ₹${reportSummary.retailCredit || 0}
+
+Data Activity Summary:
+- Entries Added: ${activitySummary.inputed || 0}
+- Entries Edited: ${activitySummary.edited || 0}
+- Entries Deleted: ${activitySummary.deleted || 0}
+
+Thank you for your work today.
+Regards,
+Namma Mart
+        `;
+
+        // Save the text report
+        const stmt = esrDb.prepare('INSERT OR REPLACE INTO esr_reports (employee_id, date, shift_id, report_data) VALUES (?, ?, ?, ?)');
+        stmt.run(employeeId, date, shiftId, reportText.trim());
+        console.log(`ESR Text Report generated and saved for employee ${employeeId} on ${date} with shift ID ${shiftId}`);
+
+        // Generate and save ESR JPG
+        try {
+            const browser = await puppeteer.launch({ headless: true });
+            const page = await browser.newPage();
+            await page.setViewport({ width: 1200, height: 800 });
+            const reportUrl = `http://localhost:${port}/end_shift_report.html?employeeId=${employeeId}&date=${date}&shiftId=${shiftId}`;
+            await page.goto(reportUrl, { waitUntil: 'networkidle2' });
+            const screenshotBuffer = await page.screenshot({ fullPage: true, type: 'jpeg', quality: 90 });
+            await browser.close();
+
+            // Save the JPG to database
+            const jpgStmt = esrDb.prepare('INSERT OR REPLACE INTO esr_jpgs (employee_id, date, shift_id, jpg_data) VALUES (?, ?, ?, ?)');
+            jpgStmt.run(employeeId, date, shiftId, screenshotBuffer);
+            console.log(`ESR JPG generated and saved for employee ${employeeId} on ${date} with shift ID ${shiftId}`);
+        } catch (jpgError) {
+            console.error('Error generating ESR JPG:', jpgError);
+        }
+    } catch (error) {
+        console.error('Error generating ESR Text Report:', error);
+    }
+
+    // Compose email content for shift end report
+    const startShiftTime = employeeRecord.startShiftTime || 'N/A';
+
+    const emailText = `
+Hello ${employeeName},
+
+Your shift has ended successfully.
+
+Shift Start Time: ${startShiftTime}
+Shift End Time: ${endShiftTime}
+
+${reportText}
+
+Regards,
+Namma Mart
+    `;
+
+    // Send email with nodemailer
+    const mailOptions = {
+        from: emailConfig.from,
+        to: employeeRecord.email,
+        subject: 'Namma Mart - Shift End Report',
+        text: emailText
+    };
+
+    try {
+        await emailConfig.transporter.sendMail(mailOptions);
+        console.log(`Shift end report email with attachment sent to ${employeeRecord.email}`);
+    } catch (err) {
+        console.error('Error sending shift end report email:', err);
+        // Not failing the API call, just logging
+    }
+
+    return res.json({ success: true, message: 'Shift ended and email sent.' });
 });
 
 /**
@@ -1142,7 +1361,7 @@ app.post('/api/revert-edit/:id', (req, res) => {
 
 app.get('/api/todays-report-summary', (req, res) => {
     try {
-        const { employeeId, date } = req.query;
+        const { employeeId, date, shiftStartTime, shiftEndTime } = req.query;
         if (!employeeId || !date) {
             return res.status(400).json({ success: false, message: 'employeeId and date are required.' });
         }
@@ -1154,7 +1373,7 @@ app.get('/api/todays-report-summary', (req, res) => {
         const retailCreditData = employee.retail_credit || [];
 
         // Filter extra data by date (YYYY-MM-DD)
-        const filteredExtraData = extraData.filter(item => {
+        let filteredExtraData = extraData.filter(item => {
             if (!item.timestamp) return false;
             const itemDate = new Date(item.timestamp);
             if (isNaN(itemDate.getTime())) return false;
@@ -1162,12 +1381,40 @@ app.get('/api/todays-report-summary', (req, res) => {
         });
 
         // Filter retail_credit data by date
-        const filteredRetailCreditData = retailCreditData.filter(item => {
+        let filteredRetailCreditData = retailCreditData.filter(item => {
             if (!item.timestamp) return false;
             const itemDate = new Date(item.timestamp);
             if (isNaN(itemDate.getTime())) return false;
             return itemDate.toISOString().split('T')[0] === date;
         });
+
+        // Further filter by shift times if provided
+        if (shiftStartTime) {
+            const start = new Date(shiftStartTime);
+            if (!isNaN(start.getTime())) {
+                filteredExtraData = filteredExtraData.filter(item => {
+                    const ts = new Date(item.timestamp);
+                    return ts >= start;
+                });
+                filteredRetailCreditData = filteredRetailCreditData.filter(item => {
+                    const ts = new Date(item.timestamp);
+                    return ts >= start;
+                });
+                if (shiftEndTime) {
+                    const end = new Date(shiftEndTime);
+                    if (!isNaN(end.getTime())) {
+                        filteredExtraData = filteredExtraData.filter(item => {
+                            const ts = new Date(item.timestamp);
+                            return ts <= end;
+                        });
+                        filteredRetailCreditData = filteredRetailCreditData.filter(item => {
+                            const ts = new Date(item.timestamp);
+                            return ts <= end;
+                        });
+                    }
+                }
+            }
+        }
 
         // Aggregate totals by payment type from extra data
         let upiPinelab = 0;
@@ -1209,6 +1456,81 @@ app.get('/api/todays-report-summary', (req, res) => {
         });
     } catch (error) {
         console.error('Error in /api/todays-report-summary:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+});
+
+// Get data activity summary (deleted, edited, inputed counts)
+app.get('/api/data-activity-summary', (req, res) => {
+    try {
+        const { employeeId, date, shiftStartTime, shiftEndTime } = req.query;
+        if (!employeeId || !date) {
+            return res.status(400).json({ success: false, message: 'employeeId and date are required.' });
+        }
+        const employee = db.get('employees').find({ id: employeeId }).value();
+        if (!employee) {
+            return res.status(404).json({ success: false, message: 'Employee not found.' });
+        }
+
+        // Filter history by date and shift
+        let filteredHistory = (employee.history || []).filter(item => {
+            if (!item.timestamp) return false;
+            const itemDate = new Date(item.timestamp);
+            if (isNaN(itemDate.getTime())) return false;
+            const matchesDate = itemDate.toISOString().split('T')[0] === date;
+            if (!matchesDate) return false;
+
+            if (shiftStartTime) {
+                const start = new Date(shiftStartTime);
+                if (!isNaN(start.getTime())) {
+                    if (itemDate < start) return false;
+                    if (shiftEndTime) {
+                        const end = new Date(shiftEndTime);
+                        if (!isNaN(end.getTime()) && itemDate > end) return false;
+                    }
+                }
+            }
+            return true;
+        });
+
+        // Count deleted and edited from history
+        const deleted = filteredHistory.filter(item => item.action === 'delete').length;
+        const edited = filteredHistory.filter(item => item.action === 'edit').length;
+
+        // Count inputed (added) data: count entries in data arrays filtered by date and shift
+        const dataTypes = ['extra', 'delivery', 'bill_paid', 'issue', 'retail_credit'];
+        let inputed = 0;
+        dataTypes.forEach(type => {
+            const data = employee[type] || [];
+            const filteredData = data.filter(item => {
+                if (!item.timestamp) return false;
+                const itemDate = new Date(item.timestamp);
+                if (isNaN(itemDate.getTime())) return false;
+                const matchesDate = itemDate.toISOString().split('T')[0] === date;
+                if (!matchesDate) return false;
+
+                if (shiftStartTime) {
+                    const start = new Date(shiftStartTime);
+                    if (!isNaN(start.getTime())) {
+                        if (itemDate < start) return false;
+                        if (shiftEndTime) {
+                            const end = new Date(shiftEndTime);
+                            if (!isNaN(end.getTime()) && itemDate > end) return false;
+                        }
+                    }
+                }
+                return true;
+            });
+            inputed += filteredData.length;
+        });
+
+        res.json({
+            deleted,
+            edited,
+            inputed
+        });
+    } catch (error) {
+        console.error('Error in /api/data-activity-summary:', error);
         res.status(500).json({ success: false, message: 'Internal server error' });
     }
 });
@@ -1464,10 +1786,10 @@ app.get('/api/esr-jpgs', (req, res) => {
         let stmt;
         let rows;
         if (date) {
-            stmt = esrDb.prepare('SELECT id, date, jpg_data FROM esr_jpgs WHERE employee_id = ? AND date = ? ORDER BY date DESC');
+            stmt = esrDb.prepare('SELECT id, date, shift_id, jpg_data FROM esr_jpgs WHERE employee_id = ? AND date = ? ORDER BY date DESC');
             rows = stmt.all(employeeId, date);
         } else {
-            stmt = esrDb.prepare('SELECT id, date, jpg_data FROM esr_jpgs WHERE employee_id = ? ORDER BY date DESC');
+            stmt = esrDb.prepare('SELECT id, date, shift_id, jpg_data FROM esr_jpgs WHERE employee_id = ? ORDER BY date DESC');
             rows = stmt.all(employeeId);
         }
 
@@ -1475,6 +1797,7 @@ app.get('/api/esr-jpgs', (req, res) => {
         const jpgs = rows.map(row => ({
             id: row.id,
             date: row.date,
+            shift_id: row.shift_id,
             jpgData: row.jpg_data.toString('base64')
         }));
 
@@ -1487,17 +1810,17 @@ app.get('/api/esr-jpgs', (req, res) => {
 
 // Save ESR JPG
 app.post('/api/save-esr-jpg', (req, res) => {
-    const { employeeId, date, jpgData } = req.body;
+    const { employeeId, date, shiftId, jpgData } = req.body;
 
-    if (!employeeId || !date || !jpgData) {
-        return res.status(400).json({ success: false, message: 'employeeId, date, and jpgData are required.' });
+    if (!employeeId || !date || !shiftId || !jpgData) {
+        return res.status(400).json({ success: false, message: 'employeeId, date, shiftId, and jpgData are required.' });
     }
 
     try {
         // Assume jpgData is base64 encoded
         const buffer = Buffer.from(jpgData, 'base64');
-        const stmt = esrDb.prepare('INSERT OR REPLACE INTO esr_jpgs (employee_id, date, jpg_data) VALUES (?, ?, ?)');
-        stmt.run(employeeId, date, buffer);
+        const stmt = esrDb.prepare('INSERT INTO esr_jpgs (employee_id, date, shift_id, jpg_data) VALUES (?, ?, ?, ?)');
+        stmt.run(employeeId, date, shiftId, buffer);
         res.json({ success: true, message: 'ESR JPG saved successfully.' });
     } catch (error) {
         console.error('Error saving ESR JPG:', error);
